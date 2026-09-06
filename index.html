@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Halı Saha Yönetimi ve Kadro Kurucu</title>
+  <title>Halı Saha Kadro Yöneticisi</title>
   <style>
     :root {
       --primary: #2e7d32;
+      --primary-dark: #1b5e20;
       --bg: #f4f6f8;
       --card-bg: #ffffff;
       --text: #333333;
+      --danger: #d32f2f;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -19,7 +21,7 @@
       padding: 15px;
     }
     .container {
-      max-width: 850px;
+      max-width: 900px;
       margin: 0 auto;
     }
     h1 {
@@ -46,66 +48,63 @@
       background: var(--primary);
       color: white;
     }
-    .panel {
+    .tab-content {
       display: none;
     }
-    .panel.active {
+    .tab-content.active {
       display: block;
     }
-    /* Form & Input Stilleri */
-    .form-group {
+    
+    /* Form Stilleri */
+    .form-box {
       background: white;
       padding: 15px;
       border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
-    .form-group input, .form-group select {
+    .form-box input, .form-box select {
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: 0.95em;
-      flex: 1;
-      min-width: 120px;
     }
-    .btn-add {
+    .form-box input[type="text"] { flex: 2; min-width: 150px; }
+    .form-box input[type="number"] { flex: 1; min-width: 80px; }
+    .form-box select { flex: 1; min-width: 110px; }
+    
+    .btn {
+      padding: 10px 15px;
       background: var(--primary);
       color: white;
       border: none;
-      padding: 10px 20px;
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
     }
-    /* Oyuncu Yönetim Listesi */
-    .manager-list {
+    .btn-danger { background: var(--danger); }
+    .btn-block { width: 100%; padding: 14px; font-size: 1.1em; }
+    
+    /* Oyuncu Yönetim Tablosu */
+    .player-table {
+      width: 100%;
+      border-collapse: collapse;
       background: white;
       border-radius: 8px;
-      padding: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .manager-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px;
+    .player-table th, .player-table td {
+      padding: 10px 12px;
+      text-align: left;
       border-bottom: 1px solid #eee;
     }
-    .manager-item:last-child {
-      border-bottom: none;
-    }
-    .btn-delete {
-      background: #d32f2f;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    /* Kadro Seçim Grid */
+    .player-table th { background: #e8f5e9; color: var(--primary-dark); }
+    
+    /* Seçim Grid */
     .counter {
       text-align: center;
       font-weight: bold;
@@ -130,53 +129,16 @@
       align-items: center;
       cursor: pointer;
       user-select: none;
-      transition: all 0.2s;
     }
     .player-card.selected {
       border-color: var(--primary);
       background-color: #e8f5e9;
     }
-    .player-card input {
-      margin-right: 8px;
-    }
-    .player-info {
-      display: flex;
-      flex-direction: column;
-    }
-    .player-name {
-      font-weight: 600;
-      font-size: 0.95em;
-    }
-    .player-role {
-      font-size: 0.75em;
-      color: #777;
-    }
-    .main-btn {
-      width: 100%;
-      padding: 14px;
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.1em;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .main-btn:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-    /* Sonuç Kartları */
-    .results {
-      margin-top: 25px;
-      display: none;
-    }
-    .teams-container {
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-    }
+    .player-card input { margin-right: 8px; }
+    
+    /* Sonuçlar */
+    .results { margin-top: 25px; display: none; }
+    .teams-container { display: flex; gap: 15px; flex-wrap: wrap; }
     .team-box {
       flex: 1;
       min-width: 280px;
@@ -185,45 +147,29 @@
       padding: 15px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .team-box h3 {
-      margin-top: 0;
-      border-bottom: 2px solid #f0f0f0;
-      padding-bottom: 8px;
-    }
+    .team-box h3 { margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
     .team-a h3 { color: #d32f2f; }
     .team-b h3 { color: #1976d2; }
-    .team-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .team-list li {
-      padding: 6px 0;
-      border-bottom: 1px solid #f9f9f9;
-      font-size: 0.95em;
-    }
-    .whatsapp-btn {
-      background-color: #25D366;
-      margin-top: 15px;
-    }
+    .team-list { list-style: none; padding: 0; margin: 0; }
+    .team-list li { padding: 6px 0; border-bottom: 1px solid #f9f9f9; }
+    .whatsapp-btn { background-color: #25D366; margin-top: 15px; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>⚽ Halı Saha Yönetimi</h1>
+  <h1>⚽ Halı Saha Kadro Yöneticisi</h1>
   
-  <!-- Sekmeler -->
   <div class="tabs">
-    <button class="tab-btn active" onclick="sekmeDegistir('matchPanel', this)">1. Kadro Kur</button>
-    <button class="tab-btn" onclick="sekmeDegistir('managePanel', this)">2. Oyuncu Havuzu (<span id="totalPlayerCount">0</span>)</button>
+    <button class="tab-btn active" onclick="tabDegistir('kadroTab')">1. Kadro Kur</button>
+    <button class="tab-btn" onclick="tabDegistir('yonetimTab')">2. Oyuncu Listesi & Puanlar</button>
   </div>
 
-  <!-- PANELS 1: KADRO SEÇİM VE OLUŞTURMA -->
-  <div id="matchPanel" class="panel active">
+  <!-- TAB 1: KADRO KURMA -->
+  <div id="kadroTab" class="tab-content active">
     <div class="counter" id="counter">Seçilen Oyuncu: 0 / 16</div>
     <div class="grid" id="playerGrid"></div>
-    <button class="main-btn" id="generateBtn" disabled onclick="kadroOlustur()">Dengeli Kadro Oluştur</button>
+    <button id="generateBtn" class="btn btn-block" disabled onclick="kadroOlustur()">Dengeli Kadroları Oluştur</button>
 
     <div class="results" id="results">
       <div class="teams-container">
@@ -236,147 +182,160 @@
           <ul class="team-list" id="teamBList"></ul>
         </div>
       </div>
-      <button class="main-btn whatsapp-btn" onclick="whatsappKopyala()">WhatsApp Metnini Kopyala</button>
+      <button class="btn btn-block whatsapp-btn" onclick="whatsappKopyala()">WhatsApp Metnini Kopyala</button>
     </div>
   </div>
 
-  <!-- PANEL 2: OYUNCU EKLEME VE YÖNETİMİ -->
-  <div id="managePanel" class="panel">
-    <div class="form-group">
-      <input type="text" id="newName" placeholder="Oyuncu Adı Soyadı" />
-      <input type="number" id="newScore" placeholder="Gizli Puan (1-100)" min="1" max="100" />
+  <!-- TAB 2: OYUNCU YÖNETİMİ -->
+  <div id="yonetimTab" class="tab-content">
+    <div class="form-box">
+      <input type="text" id="newName" placeholder="Oyuncu Adı">
+      <input type="number" id="newScore" placeholder="Puan (1-100)" min="1" max="100">
       <select id="newRole">
         <option value="H">Hücum</option>
+        <option value="O">Ortasaha</option>
         <option value="D">Defans</option>
         <option value="K">Kaleci</option>
       </select>
-      <button class="btn-add" onclick="oyuncuEkle()">Ekle</button>
+      <button class="btn" onclick="oyuncuEkle()">Oyuncu Ekle</button>
     </div>
 
-    <div class="manager-list" id="managerList"></div>
+    <table class="player-table">
+      <thead>
+        <tr>
+          <th>İsim</th>
+          <th>Gizli Puan</th>
+          <th>Mevki</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="playerTableBody"></tbody>
+    </table>
   </div>
 </div>
 
 <script>
-  // Tarayıcı hafızasından veya boş liste olarak başlat
-  let oyuncuHavuzu = JSON.parse(localStorage.getItem('halisaha_oyuncular')) || [];
+  let oyuncular = JSON.parse(localStorage.getItem("halisaha_oyuncular")) || [];
   let secilenOyuncular = [];
-  let sonOlusanKadrolar = null;
+  let sonKadrolar = null;
 
-  // Başlangıçta ekranı yükle
   document.addEventListener("DOMContentLoaded", () => {
-    arayıuzGuncelle();
+    oyuncuListesiniGuncelle();
+    gridiGuncelle();
   });
 
-  // Sekme Değiştirici
-  function sekmeDegistir(panelId, btn) {
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(panelId).classList.add('active');
-    btn.classList.add('active');
+  function tabDegistir(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    if(tabId === 'kadroTab') {
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      gridiGuncelle();
+    } else {
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      oyuncuListesiniGuncelle();
+    }
+    document.getElementById(tabId).classList.add('active');
   }
 
-  // Oyuncu Ekleme
+  function verileriKaydet() {
+    localStorage.setItem("halisaha_oyuncular", JSON.stringify(oyuncular));
+  }
+
+  function mevkiFormatla(mevki) {
+    switch(mevki) {
+      case 'K': return '🧤 Kaleci';
+      case 'D': return '🛡️ Defans';
+      case 'O': return '⚙️ Ortasaha';
+      case 'H': return '⚽ Hücum';
+      default: return mevki;
+    }
+  }
+
+  // OYUNCU YÖNETİM İŞLEMLERİ
   function oyuncuEkle() {
-    const nameInput = document.getElementById("newName");
-    const scoreInput = document.getElementById("newScore");
-    const roleInput = document.getElementById("newRole");
+    const name = document.getElementById("newName").value.trim();
+    const score = parseInt(document.getElementById("newScore").value);
+    const role = document.getElementById("newRole").value;
 
-    const isim = nameInput.value.trim();
-    const puan = parseInt(scoreInput.value);
-    const mevki = roleInput.value;
-
-    if (!isim || isNaN(puan) || puan < 1 || puan > 100) {
-      alert("Lütfen geçerli bir isim ve 1-100 arasında puan giriniz.");
+    if (!name || isNaN(score)) {
+      alert("Lütfen geçerli bir isim ve puan girin!");
       return;
     }
 
     const yeniOyuncu = {
       id: Date.now(),
-      isim,
-      puan,
-      mevki
+      isim: name,
+      puan: score,
+      mevki: role
     };
 
-    oyuncuHavuzu.push(yeniOyuncu);
-    veriyiKaydet();
-    
-    // İnputları temizle
-    nameInput.value = "";
-    scoreInput.value = "";
-    
-    arayıuzGuncelle();
+    oyuncular.push(yeniOyuncu);
+    verileriKaydet();
+    oyuncuListesiniGuncelle();
+
+    document.getElementById("newName").value = "";
+    document.getElementById("newScore").value = "";
   }
 
-  // Oyuncu Silme
   function oyuncuSil(id) {
     if (confirm("Bu oyuncuyu silmek istediğinize emin misiniz?")) {
-      oyuncuHavuzu = oyuncuHavuzu.filter(p => p.id !== id);
+      oyuncular = oyuncular.filter(p => p.id !== id);
       secilenOyuncular = secilenOyuncular.filter(p => p.id !== id);
-      veriyiKaydet();
-      arayıuzGuncelle();
+      verileriKaydet();
+      oyuncuListesiniGuncelle();
     }
   }
 
-  // Veriyi LocalStorage'a kaydetme
-  function veriyiKaydet() {
-    localStorage.setItem('halisaha_oyuncular', JSON.stringify(oyuncuHavuzu));
-  }
+  function oyuncuListesiniGuncelle() {
+    const tbody = document.getElementById("playerTableBody");
+    tbody.innerHTML = "";
 
-  // Tüm Arayüzü Yenileme
-  function arayıuzGuncelle() {
-    document.getElementById("totalPlayerCount").innerText = oyuncuHavuzu.length;
-    
-    // 1. Yönetim Paneli Listesi
-    const managerList = document.getElementById("managerList");
-    if (oyuncuHavuzu.length === 0) {
-      managerList.innerHTML = "<p style='text-align:center; color:#888;'>Henüz oyuncu eklenmedi.</p>";
-    } else {
-      managerList.innerHTML = oyuncuHavuzu.map(p => `
-        <div class="manager-item">
-          <div>
-            <b>${p.isim}</b> 
-            <span style="font-size:0.85em; color:#666;">
-              (${p.mevki === 'K' ? 'Kaleci' : p.mevki === 'H' ? 'Hücum' : 'Defans'})
-            </span>
-          </div>
-          <div>
-            <span style="background:#e8f5e9; color:#2e7d32; padding:3px 8px; border-radius:4px; font-weight:bold; font-size:0.85em; margin-right:10px;">
-              Puan: ${p.puan}
-            </span>
-            <button class="btn-delete" onclick="oyuncuSil(${p.id})">Sil</button>
-          </div>
-        </div>
-      `).join("");
+    if (oyuncular.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#777;">Henüz eklenmiş oyuncu yok. Yukarıdan ekleyebilirsiniz.</td></tr>`;
+      return;
     }
 
-    // 2. Kadro Seçim Paneli (Grid)
+    oyuncular.forEach(p => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><b>${p.isim}</b></td>
+        <td>${p.puan}</td>
+        <td>${mevkiFormatla(p.mevki)}</td>
+        <td><button class="btn btn-danger" onclick="oyuncuSil(${p.id})">Sil</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // KADRO KURMA İŞLEMLERİ
+  function gridiGuncelle() {
     const grid = document.getElementById("playerGrid");
     grid.innerHTML = "";
-    
-    if (oyuncuHavuzu.length === 0) {
-      grid.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#888;'>Lütfen önce 'Oyuncu Havuzu' sekmesinden oyuncu ekleyin.</p>";
+
+    if (oyuncular.length === 0) {
+      grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777;">Lütfen önce 'Oyuncu Listesi' sekmesinden oyuncularınızı ekleyin.</p>`;
+      return;
     }
 
-    oyuncuHavuzu.forEach(oyuncu => {
+    oyuncular.forEach(oyuncu => {
       const isSelected = secilenOyuncular.some(p => p.id === oyuncu.id);
       const card = document.createElement("div");
       card.className = `player-card ${isSelected ? 'selected' : ''}`;
       card.onclick = () => toggleSelect(oyuncu, card);
       card.innerHTML = `
         <input type="checkbox" ${isSelected ? 'checked' : ''} pointer-events="none">
-        <div class="player-info">
-          <span class="player-name">${oyuncu.isim}</span>
-          <span class="player-role">${oyuncu.mevki === 'K' ? '🧤 Kaleci' : oyuncu.mevki === 'H' ? '⚽ Hücum' : '🛡️ Defans'}</span>
+        <div>
+          <div style="font-weight:600;">${oyuncu.isim}</div>
+          <div style="font-size:0.75em; color:#777;">${mevkiFormatla(oyuncu.mevki)}</div>
         </div>
       `;
       grid.appendChild(card);
     });
 
-    secimDurumunuGuncelle();
+    sayaciGuncelle();
   }
 
-  // Seçim Mantığı
   function toggleSelect(oyuncu, card) {
     const checkbox = card.querySelector("input");
     const index = secilenOyuncular.findIndex(p => p.id === oyuncu.id);
@@ -395,17 +354,17 @@
       checkbox.checked = true;
     }
 
-    secimDurumunuGuncelle();
+    sayaciGuncelle();
   }
 
-  function secimDurumunuGuncelle() {
+  function sayaciGuncelle() {
     const counter = document.getElementById("counter");
     const btn = document.getElementById("generateBtn");
     counter.innerText = `Seçilen Oyuncu: ${secilenOyuncular.length} / 16`;
     btn.disabled = secilenOyuncular.length !== 16;
   }
 
-  // Dengeli Kadro Kurma (Snake Draft)
+  // Yılan (Snake) Algoritması ile Kadro Kurma
   function kadroOlustur() {
     const sirali = [...secilenOyuncular].sort((a, b) => b.puan - a.puan);
 
@@ -424,35 +383,29 @@
       }
     });
 
-    sonOlusanKadrolar = { takimA, takimB };
+    sonKadrolar = { takimA, takimB };
 
     document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (${p.mevki})</li>`).join("");
     document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (${p.mevki})</li>`).join("");
     document.getElementById("results").style.display = "block";
-
     document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
   }
 
-  // WhatsApp Formatı
+  // WhatsApp Metin Kopyalama
   function whatsappKopyala() {
-    if (!sonOlusanKadrolar) return;
+    if (!sonKadrolar) return;
 
     let metin = `⚽ *BU HAFTANIN KADROLARI* ⚽\n\n`;
-    
     metin += `🔴 *A TAKIMI (Siyah)*\n`;
-    sonOlusanKadrolar.takimA.forEach((p, i) => {
-      metin += `${i + 1}. ${p.isim} (${p.mevki})\n`;
-    });
+    sonKadrolar.takimA.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${p.mevki})\n`);
 
     metin += `\n🔵 *B TAKIMI (Beyaz)*\n`;
-    sonOlusanKadrolar.takimB.forEach((p, i) => {
-      metin += `${i + 1}. ${p.isim} (${p.mevki})\n`;
-    });
+    sonKadrolar.takimB.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${p.mevki})\n`);
 
-    metin += `\n📍 Herkese iyi maçlar!`;
+    metin += `\n📍 Herkese başarılar!`;
 
     navigator.clipboard.writeText(metin).then(() => {
-      alert("WhatsApp mesajı kopyalandı!");
+      alert("WhatsApp mesajı panoya kopyalandı!");
     });
   }
 </script>
