@@ -12,6 +12,7 @@
       --card-bg: #ffffff;
       --text: #333333;
       --danger: #d32f2f;
+      --warning: #f57c00;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -62,19 +63,34 @@
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       margin-bottom: 20px;
+    }
+    .form-inputs {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+      margin-bottom: 12px;
     }
-    .form-box input, .form-box select {
+    .form-inputs input[type="text"] { flex: 2; min-width: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+    .form-inputs input[type="number"] { flex: 1; min-width: 90px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+    
+    .roles-container {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: #f9f9f9;
       padding: 10px;
-      border: 1px solid #ccc;
       border-radius: 6px;
-      font-size: 0.95em;
+      margin-bottom: 12px;
     }
-    .form-box input[type="text"] { flex: 2; min-width: 150px; }
-    .form-box input[type="number"] { flex: 1; min-width: 80px; }
-    .form-box select { flex: 1; min-width: 110px; }
+    .roles-container label {
+      font-size: 0.9em;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
     
     .btn {
       padding: 10px 15px;
@@ -85,6 +101,7 @@
       font-weight: bold;
       cursor: pointer;
     }
+    .btn-edit { background: var(--warning); margin-right: 5px; }
     .btn-danger { background: var(--danger); }
     .btn-block { width: 100%; padding: 14px; font-size: 1.1em; }
     
@@ -189,15 +206,21 @@
   <!-- TAB 2: OYUNCU YÖNETİMİ -->
   <div id="yonetimTab" class="tab-content">
     <div class="form-box">
-      <input type="text" id="newName" placeholder="Oyuncu Adı">
-      <input type="number" id="newScore" placeholder="Puan (1-100)" min="1" max="100">
-      <select id="newRole">
-        <option value="H">Hücum</option>
-        <option value="O">Ortasaha</option>
-        <option value="D">Defans</option>
-        <option value="K">Kaleci</option>
-      </select>
-      <button class="btn" onclick="oyuncuEkle()">Oyuncu Ekle</button>
+      <input type="hidden" id="editId" value="">
+      <div class="form-inputs">
+        <input type="text" id="newName" placeholder="Oyuncu Adı">
+        <input type="number" id="newScore" placeholder="Puan (10-100)" min="10" max="100">
+      </div>
+      
+      <div style="font-size:0.85em; font-weight:bold; margin-bottom:5px; color:#555;">Oynayabildiği Mevkiler (Birden fazla seçilebilir):</div>
+      <div class="roles-container">
+        <label><input type="checkbox" class="role-cb" value="K"> 🧤 Kaleci</label>
+        <label><input type="checkbox" class="role-cb" value="D"> 🛡️ Defans</label>
+        <label><input type="checkbox" class="role-cb" value="O"> ⚙️ Ortasaha</label>
+        <label><input type="checkbox" class="role-cb" value="H"> ⚽ Hücum</label>
+      </div>
+
+      <button class="btn btn-block" id="saveBtn" onclick="oyuncuKaydet()">Oyuncu Ekle</button>
     </div>
 
     <table class="player-table">
@@ -205,7 +228,7 @@
         <tr>
           <th>İsim</th>
           <th>Gizli Puan</th>
-          <th>Mevki</th>
+          <th>Mevki(ler)</th>
           <th>İşlem</th>
         </tr>
       </thead>
@@ -242,40 +265,68 @@
     localStorage.setItem("halisaha_oyuncular", JSON.stringify(oyuncular));
   }
 
-  function mevkiFormatla(mevki) {
-    switch(mevki) {
-      case 'K': return '🧤 Kaleci';
-      case 'D': return '🛡️ Defans';
-      case 'O': return '⚙️ Ortasaha';
-      case 'H': return '⚽ Hücum';
-      default: return mevki;
-    }
+  function mevkileriFormatla(mevkiler) {
+    if(!mevkiler || mevkiler.length === 0) return "-";
+    return mevkiler.join("/");
   }
 
   // OYUNCU YÖNETİM İŞLEMLERİ
-  function oyuncuEkle() {
+  function oyuncuKaydet() {
+    const editId = document.getElementById("editId").value;
     const name = document.getElementById("newName").value.trim();
     const score = parseInt(document.getElementById("newScore").value);
-    const role = document.getElementById("newRole").value;
+    
+    const selectedRoles = [];
+    document.querySelectorAll('.role-cb:checked').forEach(cb => selectedRoles.push(cb.value));
 
     if (!name || isNaN(score)) {
       alert("Lütfen geçerli bir isim ve puan girin!");
       return;
     }
 
-    const yeniOyuncu = {
-      id: Date.now(),
-      isim: name,
-      puan: score,
-      mevki: role
-    };
+    if (selectedRoles.length === 0) {
+      alert("Lütfen en az bir mevki seçin!");
+      return;
+    }
 
-    oyuncular.push(yeniOyuncu);
+    if (editId) {
+      // Güncelleme
+      const index = oyuncular.findIndex(p => p.id == editId);
+      if (index > -1) {
+        oyuncular[index].isim = name;
+        oyuncular[index].puan = score;
+        oyuncular[index].mevkiler = selectedRoles;
+      }
+    } else {
+      // Yeni Ekleme
+      const yeniOyuncu = {
+        id: Date.now(),
+        isim: name,
+        puan: score,
+        mevkiler: selectedRoles
+      };
+      oyuncular.push(yeniOyuncu);
+    }
+
     verileriKaydet();
     oyuncuListesiniGuncelle();
+    formuTemizle();
+  }
 
-    document.getElementById("newName").value = "";
-    document.getElementById("newScore").value = "";
+  function oyuncuDuzenle(id) {
+    const oyuncu = oyuncular.find(p => p.id === id);
+    if (!oyuncu) return;
+
+    document.getElementById("editId").value = oyuncu.id;
+    document.getElementById("newName").value = oyuncu.isim;
+    document.getElementById("newScore").value = oyuncu.puan;
+
+    document.querySelectorAll('.role-cb').forEach(cb => {
+      cb.checked = oyuncu.mevkiler ? oyuncu.mevkiler.includes(cb.value) : false;
+    });
+
+    document.getElementById("saveBtn").innerText = "Oyuncuyu Güncelle";
+    document.getElementById("saveBtn").style.backgroundColor = "var(--warning)";
   }
 
   function oyuncuSil(id) {
@@ -284,7 +335,17 @@
       secilenOyuncular = secilenOyuncular.filter(p => p.id !== id);
       verileriKaydet();
       oyuncuListesiniGuncelle();
+      formuTemizle();
     }
+  }
+
+  function formuTemizle() {
+    document.getElementById("editId").value = "";
+    document.getElementById("newName").value = "";
+    document.getElementById("newScore").value = "";
+    document.querySelectorAll('.role-cb').forEach(cb => cb.checked = false);
+    document.getElementById("saveBtn").innerText = "Oyuncu Ekle";
+    document.getElementById("saveBtn").style.backgroundColor = "var(--primary)";
   }
 
   function oyuncuListesiniGuncelle() {
@@ -301,8 +362,11 @@
       tr.innerHTML = `
         <td><b>${p.isim}</b></td>
         <td>${p.puan}</td>
-        <td>${mevkiFormatla(p.mevki)}</td>
-        <td><button class="btn btn-danger" onclick="oyuncuSil(${p.id})">Sil</button></td>
+        <td>${mevkileriFormatla(p.mevkiler)}</td>
+        <td>
+          <button class="btn btn-edit" onclick="oyuncuDuzenle(${p.id})">Düzenle</button>
+          <button class="btn btn-danger" onclick="oyuncuSil(${p.id})">Sil</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -327,7 +391,7 @@
         <input type="checkbox" ${isSelected ? 'checked' : ''} pointer-events="none">
         <div>
           <div style="font-weight:600;">${oyuncu.isim}</div>
-          <div style="font-size:0.75em; color:#777;">${mevkiFormatla(oyuncu.mevki)}</div>
+          <div style="font-size:0.75em; color:#777;">${mevkileriFormatla(oyuncu.mevkiler)}</div>
         </div>
       `;
       grid.appendChild(card);
@@ -385,8 +449,8 @@
 
     sonKadrolar = { takimA, takimB };
 
-    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (${p.mevki})</li>`).join("");
-    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (${p.mevki})</li>`).join("");
+    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (${mevkileriFormatla(p.mevkiler)})</li>`).join("");
     document.getElementById("results").style.display = "block";
     document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
   }
@@ -397,10 +461,10 @@
 
     let metin = `⚽ *BU HAFTANIN KADROLARI* ⚽\n\n`;
     metin += `🔴 *A TAKIMI (Siyah)*\n`;
-    sonKadrolar.takimA.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${p.mevki})\n`);
+    sonKadrolar.takimA.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${mevkileriFormatla(p.mevkiler)})\n`);
 
     metin += `\n🔵 *B TAKIMI (Beyaz)*\n`;
-    sonKadrolar.takimB.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${p.mevki})\n`);
+    sonKadrolar.takimB.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${mevkileriFormatla(p.mevkiler)})\n`);
 
     metin += `\n📍 Herkese başarılar!`;
 
