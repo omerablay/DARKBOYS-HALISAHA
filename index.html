@@ -34,9 +34,11 @@
       display: flex;
       gap: 10px;
       margin-bottom: 20px;
+      flex-wrap: wrap;
     }
     .tab-btn {
       flex: 1;
+      min-width: 130px;
       padding: 12px;
       background: #e0e0e0;
       border: none;
@@ -105,6 +107,14 @@
     .btn-danger { background: var(--danger); }
     .btn-block { width: 100%; padding: 14px; font-size: 1.1em; }
     
+    /* Yükleniyor Göstergesi */
+    .loading-overlay {
+      text-align: center;
+      padding: 20px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
     /* Oyuncu Yönetim Tablosu */
     .player-table {
       width: 100%;
@@ -153,6 +163,41 @@
     }
     .player-card input { margin-right: 8px; }
     
+    /* Canlı Puanlama (Anket) Kartları */
+    .poll-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 15px;
+    }
+    .poll-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .poll-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .poll-score-input {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .poll-score-input input {
+      width: 80px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: bold;
+    }
+
     /* Sonuçlar */
     .results { margin-top: 25px; display: none; }
     .teams-container { display: flex; gap: 15px; flex-wrap: wrap; }
@@ -179,11 +224,14 @@
   
   <div class="tabs">
     <button class="tab-btn active" onclick="tabDegistir('kadroTab')">1. Kadro Kur</button>
-    <button class="tab-btn" onclick="tabDegistir('yonetimTab')">2. Oyuncu Listesi & Puanlar</button>
+    <button class="tab-btn" onclick="tabDegistir('yonetimTab')">2. Oyuncu Listesi</button>
+    <button class="tab-btn" onclick="tabDegistir('anketTab')">3. Canlı Puanlama</button>
   </div>
 
+  <div id="loadingStatus" class="loading-overlay">Veriler buluttan yükleniyor, lütfen bekleyin...</div>
+
   <!-- TAB 1: KADRO KURMA -->
-  <div id="kadroTab" class="tab-content active">
+  <div id="kadroTab" class="tab-content">
     <div class="counter" id="counter">Seçilen Oyuncu: 0 / 16</div>
     <div class="grid" id="playerGrid"></div>
     <button id="generateBtn" class="btn btn-block" disabled onclick="kadroOlustur()">Dengeli Kadroları Oluştur</button>
@@ -227,7 +275,7 @@
       <thead>
         <tr>
           <th>İsim</th>
-          <th>Gizli Puan</th>
+          <th>Mevcut Puan</th>
           <th>Mevki(ler)</th>
           <th>İşlem</th>
         </tr>
@@ -235,16 +283,28 @@
       <tbody id="playerTableBody"></tbody>
     </table>
   </div>
+
+  <!-- TAB 3: CANLI PUANLAMA (ANKET) -->
+  <div id="anketTab" class="tab-content">
+    <div class="form-box" style="background: #e8f5e9; border-left: 5px solid var(--primary);">
+      <h3 style="margin-top:0; color:var(--primary-dark);">📊 Canlı Performans & Anket Puanlama</h3>
+      <p style="font-size: 0.9em; color: #555; margin-bottom: 0;">
+        Bu haftaki maç performansına göre oyuncuların puanlarını anlık olarak güncelleyebilirsiniz. Değişiklikler ortak tabloya kaydedilir ve kadro kurma algoritmasına yansır.
+      </p>
+    </div>
+    <div class="poll-container" id="pollContainer"></div>
+  </div>
 </div>
 
 <script>
-  let oyuncular = JSON.parse(localStorage.getItem("halisaha_oyuncular")) || [];
+  const API_URL = "https://script.google.com/macros/s/AKfycbxPms5XkVnVS5aFbmPd2DX05LTJDDn7scMKV7Kwt_MfJp_JmrDWeLpws8LXcHTs0S0h/exec";
+  
+  let oyuncular = [];
   let secilenOyuncular = [];
   let sonKadrolar = null;
 
   document.addEventListener("DOMContentLoaded", () => {
-    oyuncuListesiniGuncelle();
-    gridiGuncelle();
+    verileriBuluttanCek();
   });
 
   function tabDegistir(tabId) {
@@ -254,20 +314,61 @@
     if(tabId === 'kadroTab') {
       document.querySelectorAll('.tab-btn')[0].classList.add('active');
       gridiGuncelle();
-    } else {
+    } else if(tabId === 'yonetimTab') {
       document.querySelectorAll('.tab-btn')[1].classList.add('active');
       oyuncuListesiniGuncelle();
+    } else if(tabId === 'anketTab') {
+      document.querySelectorAll('.tab-btn')[2].classList.add('active');
+      anketListesiniGuncelle();
     }
     document.getElementById(tabId).classList.add('active');
   }
 
-  function verileriKaydet() {
-    localStorage.setItem("halisaha_oyuncular", JSON.stringify(oyuncular));
+  // BULUTTAN VERİ ÇEKME
+  function verileriBuluttanCek() {
+    document.getElementById("loadingStatus").style.display = "block";
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        oyuncular = data || [];
+        document.getElementById("loadingStatus").style.display = "none";
+        document.getElementById("kadroTab").classList.add("active");
+        oyuncuListesiniGuncelle();
+        gridiGuncelle();
+        anketListesiniGuncelle();
+      })
+      .catch(err => {
+        console.error("Veri çekilemedi:", err);
+        document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! İnternet bağlantınızı kontrol edin.";
+      });
+  }
+
+  // BULUTA VERİ GÖNDERME / KAYDETME
+  function verileriBulutaKaydet(callback) {
+    document.getElementById("loadingStatus").innerText = "Buluta kaydediliyor...";
+    document.getElementById("loadingStatus").style.display = "block";
+
+    fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(oyuncular)
+    })
+    .then(() => {
+      document.getElementById("loadingStatus").style.display = "none";
+      if (callback) callback();
+    })
+    .catch(err => {
+      console.error("Kayıt hatası:", err);
+      document.getElementById("loadingStatus").style.display = "none";
+      alert("Kayıt sırasında bir hata oluştu.");
+    });
   }
 
   function mevkileriFormatla(mevkiler) {
-    if(!mevkiler || mevkiler.length === 0) return "-";
-    return mevkiler.join("/");
+    if(!mevkiler) return "-";
+    if(Array.isArray(mevkiler)) return mevkiler.length > 0 ? mevkiler.join("/") : "-";
+    return mevkiler;
   }
 
   // OYUNCU YÖNETİM İŞLEMLERİ
@@ -290,7 +391,6 @@
     }
 
     if (editId) {
-      // Güncelleme
       const index = oyuncular.findIndex(p => p.id == editId);
       if (index > -1) {
         oyuncular[index].isim = name;
@@ -298,7 +398,6 @@
         oyuncular[index].mevkiler = selectedRoles;
       }
     } else {
-      // Yeni Ekleme
       const yeniOyuncu = {
         id: Date.now(),
         isim: name,
@@ -308,34 +407,44 @@
       oyuncular.push(yeniOyuncu);
     }
 
-    verileriKaydet();
-    oyuncuListesiniGuncelle();
-    formuTemizle();
+    verileriBulutaKaydet(() => {
+      oyuncuListesiniGuncelle();
+      anketListesiniGuncelle();
+      gridiGuncelle();
+      formuTemizle();
+      alert("Değişiklikler buluta başarıyla kaydedildi!");
+    });
   }
 
   function oyuncuDuzenle(id) {
-    const oyuncu = oyuncular.find(p => p.id === id);
+    const oyuncu = oyuncular.find(p => p.id == id);
     if (!oyuncu) return;
 
     document.getElementById("editId").value = oyuncu.id;
     document.getElementById("newName").value = oyuncu.isim;
     document.getElementById("newScore").value = oyuncu.puan;
 
+    const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
     document.querySelectorAll('.role-cb').forEach(cb => {
-      cb.checked = oyuncu.mevkiler ? oyuncu.mevkiler.includes(cb.value) : false;
+      cb.checked = mList.includes(cb.value);
     });
 
     document.getElementById("saveBtn").innerText = "Oyuncuyu Güncelle";
     document.getElementById("saveBtn").style.backgroundColor = "var(--warning)";
+    tabDegistir('yonetimTab');
   }
 
   function oyuncuSil(id) {
     if (confirm("Bu oyuncuyu silmek istediğinize emin misiniz?")) {
-      oyuncular = oyuncular.filter(p => p.id !== id);
-      secilenOyuncular = secilenOyuncular.filter(p => p.id !== id);
-      verileriKaydet();
-      oyuncuListesiniGuncelle();
-      formuTemizle();
+      oyuncular = oyuncular.filter(p => p.id != id);
+      secilenOyuncular = secilenOyuncular.filter(p => p.id != id);
+      
+      verileriBulutaKaydet(() => {
+        oyuncuListesiniGuncelle();
+        anketListesiniGuncelle();
+        gridiGuncelle();
+        formuTemizle();
+      });
     }
   }
 
@@ -353,7 +462,7 @@
     tbody.innerHTML = "";
 
     if (oyuncular.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#777;">Henüz eklenmiş oyuncu yok. Yukarıdan ekleyebilirsiniz.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#777;">Henüz eklenmiş oyuncu yok.</td></tr>`;
       return;
     }
 
@@ -372,6 +481,53 @@
     });
   }
 
+  // CANLI PUANLAMA (ANKET) İŞLEMLERİ
+  function anketListesiniGuncelle() {
+    const container = document.getElementById("pollContainer");
+    container.innerHTML = "";
+
+    if (oyuncular.length === 0) {
+      container.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777;">Önce oyuncu listesinden oyuncu eklemelisiniz.</p>`;
+      return;
+    }
+
+    oyuncular.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "poll-card";
+      card.innerHTML = `
+        <div>
+          <div class="poll-header">
+            <b>${p.isim}</b>
+            <span style="font-size:0.8em; color:#777;">${mevkileriFormatla(p.mevkiler)}</span>
+          </div>
+        </div>
+        <div class="poll-score-input">
+          <input type="number" id="poll-score-${p.id}" value="${p.puan}" min="10" max="100">
+          <button class="btn" style="padding: 8px 12px; font-size:0.9em;" onclick="canliPuanGuncelle(${p.id})">Güncelle</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function canliPuanGuncelle(id) {
+    const inputVal = parseInt(document.getElementById(`poll-score-${id}`).value);
+    if (isNaN(inputVal) || inputVal < 10 || inputVal > 100) {
+      alert("Lütfen 10 ile 100 arasında geçerli bir puan girin!");
+      return;
+    }
+
+    const index = oyuncular.findIndex(p => p.id == id);
+    if (index > -1) {
+      oyuncular[index].puan = inputVal;
+      verileriBulutaKaydet(() => {
+        oyuncuListesiniGuncelle();
+        gridiGuncelle();
+        alert(`${oyuncular[index].isim} oyuncusunun puanı güncellendi ve ortak tabloya işlendi!`);
+      });
+    }
+  }
+
   // KADRO KURMA İŞLEMLERİ
   function gridiGuncelle() {
     const grid = document.getElementById("playerGrid");
@@ -383,7 +539,7 @@
     }
 
     oyuncular.forEach(oyuncu => {
-      const isSelected = secilenOyuncular.some(p => p.id === oyuncu.id);
+      const isSelected = secilenOyuncular.some(p => p.id == oyuncu.id);
       const card = document.createElement("div");
       card.className = `player-card ${isSelected ? 'selected' : ''}`;
       card.onclick = () => toggleSelect(oyuncu, card);
@@ -391,7 +547,7 @@
         <input type="checkbox" ${isSelected ? 'checked' : ''} pointer-events="none">
         <div>
           <div style="font-weight:600;">${oyuncu.isim}</div>
-          <div style="font-size:0.75em; color:#777;">${mevkileriFormatla(oyuncu.mevkiler)}</div>
+          <div style="font-size:0.75em; color:#777;">Puan: ${oyuncu.puan} | ${mevkileriFormatla(oyuncu.mevkiler)}</div>
         </div>
       `;
       grid.appendChild(card);
@@ -402,7 +558,7 @@
 
   function toggleSelect(oyuncu, card) {
     const checkbox = card.querySelector("input");
-    const index = secilenOyuncular.findIndex(p => p.id === oyuncu.id);
+    const index = secilenOyuncular.findIndex(p => p.id == oyuncu.id);
 
     if (index > -1) {
       secilenOyuncular.splice(index, 1);
@@ -428,8 +584,12 @@
     btn.disabled = secilenOyuncular.length !== 16;
   }
 
-  // Yılan (Snake) Algoritması ile Kadro Kurma
   function kadroOlustur() {
+    secilenOyuncular = secilenOyuncular.map(secilen => {
+      const guncel = oyuncular.find(p => p.id == secilen.id);
+      return guncel ? guncel : secilen;
+    });
+
     const sirali = [...secilenOyuncular].sort((a, b) => b.puan - a.puan);
 
     const takimA = [];
@@ -449,22 +609,21 @@
 
     sonKadrolar = { takimA, takimB };
 
-    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (${mevkileriFormatla(p.mevkiler)})</li>`).join("");
-    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${p.puan} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${p.puan} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
     document.getElementById("results").style.display = "block";
     document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
   }
 
-  // WhatsApp Metin Kopyalama
   function whatsappKopyala() {
     if (!sonKadrolar) return;
 
     let metin = `⚽ *BU HAFTANIN KADROLARI* ⚽\n\n`;
     metin += `🔴 *A TAKIMI (Siyah)*\n`;
-    sonKadrolar.takimA.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${mevkileriFormatla(p.mevkiler)})\n`);
+    sonKadrolar.takimA.forEach((p, i) => metin += `${i + 1}. ${p.isim}\n`);
 
     metin += `\n🔵 *B TAKIMI (Beyaz)*\n`;
-    sonKadrolar.takimB.forEach((p, i) => metin += `${i + 1}. ${p.isim} (${mevkileriFormatla(p.mevkiler)})\n`);
+    sonKadrolar.takimB.forEach((p, i) => metin += `${i + 1}. ${p.isim}\n`);
 
     metin += `\n📍 Herkese başarılar!`;
 
