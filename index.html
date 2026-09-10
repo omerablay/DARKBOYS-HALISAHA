@@ -108,9 +108,11 @@
     
     .loading-overlay {
       text-align: center;
-      padding: 20px;
+      padding: 10px;
+      font-size: 0.85em;
       font-weight: bold;
-      color: var(--primary);
+      color: var(--warning);
+      display: none;
     }
 
     .player-table {
@@ -222,7 +224,7 @@
     <button class="tab-btn" onclick="tabDegistir('anketTab')">3. Canlı Puanlama (Oylama)</button>
   </div>
 
-  <div id="loadingStatus" class="loading-overlay">Veriler buluttan yükleniyor, lütfen bekleyin...</div>
+  <div id="loadingStatus" class="loading-overlay">Buluttan güncel veriler alınıyor...</div>
 
   <!-- YÖNETİCİ ŞİFRE EKRANI -->
   <div id="adminLockModal" class="lock-box" style="display:none; text-align:center; border-left: 5px solid var(--warning);">
@@ -302,7 +304,7 @@
 
 <script>
   const API_URL = "https://script.google.com/macros/s/AKfycbwji1v8ljFA7CO-IFBv_z9uod-NF2Tpq_KVBwaRfpcU0iyCKjAxLck0xtfLH4rThKPFlw/exec";
-  const ADMIN_PASS = "1453"; // BURADAN YÖNETİCİ ŞİFRENİZİ DEĞİŞTİREBİLİRSİNİZ
+  const ADMIN_PASS = "1453"; 
   
   let oyuncular = [];
   let secilenOyuncular = [];
@@ -310,6 +312,16 @@
   let aktifTab = 'kadroTab';
 
   document.addEventListener("DOMContentLoaded", () => {
+    // 1. Önce cihazda önbelleğe alınmış verileri anında yükle (Hız için)
+    const cachedData = localStorage.getItem("halisaha_cache_oyuncular");
+    if (cachedData) {
+      try {
+        oyuncular = JSON.parse(cachedData);
+        tabDegistir('kadroTab');
+      } catch(e) {}
+    }
+
+    // 2. Ardından buluttan güncel veriyi sessizce çek
     verileriBuluttanCek();
   });
 
@@ -319,7 +331,6 @@
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById('adminLockModal').style.display = 'none';
 
-    // 1 ve 2. sekme yöneticiye özel
     if (tabId === 'kadroTab' || tabId === 'yonetimTab') {
       const yetkili = sessionStorage.getItem("admin_auth") === "true";
       if (!yetkili) {
@@ -359,9 +370,8 @@
     const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
     window[callbackName] = function(data) {
       delete window[callbackName];
-      document.body.removeChild(script);
+      if (script.parentNode) document.body.removeChild(script);
       
-      // Verileri işle (Eğer puanlar string veya JSON havuzu halindeyse parse et)
       oyuncular = (data || []).map(p => {
         let oylar = {};
         try {
@@ -377,14 +387,21 @@
         };
       });
 
+      // Tarayıcı önbelleğine kaydet
+      localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
+
       document.getElementById("loadingStatus").style.display = "none";
-      tabDegistir('kadroTab');
+      
+      // Ekranı güncel verilerle tazele
+      if (aktifTab === 'kadroTab') gridiGuncelle();
+      else if (aktifTab === 'yonetimTab') oyuncuListesiniGuncelle();
+      else if (aktifTab === 'anketTab') anketListesiniGuncelle();
     };
 
     const script = document.createElement('script');
     script.src = `${API_URL}?callback=${callbackName}`;
     script.onerror = function() {
-      document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! İnternet bağlantınızı kontrol edin.";
+      document.getElementById("loadingStatus").style.display = "none";
     };
     document.body.appendChild(script);
   }
@@ -400,13 +417,15 @@
     document.getElementById("loadingStatus").innerText = "Buluta kaydediliyor...";
     document.getElementById("loadingStatus").style.display = "block";
 
-    // Kayıt yaparken oyları JSON formatına çevirip kaydediyoruz
     const kayitVerisi = oyuncular.map(p => ({
       id: p.id,
       isim: p.isim,
       puan: JSON.stringify(p.oylar),
       mevkiler: p.mevkiler
     }));
+
+    // Yerel önbelleği de hemen güncelle
+    localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
 
     fetch(API_URL, {
       method: "POST",
@@ -454,7 +473,6 @@
       if (index > -1) {
         oyuncular[index].isim = name;
         oyuncular[index].mevkiler = selectedRoles;
-        // Eğer yeni puan eklendiyse havuza dahil et
         if(!oyuncular[index].oylar) oyuncular[index].oylar = {};
         oyuncular[index].oylar["Yönetici"] = score;
       }
@@ -542,7 +560,6 @@
     });
   }
 
-  // CANLI OYLAMA VE PUAN HAVUZU
   function anketListesiniGuncelle() {
     const container = document.getElementById("pollContainer");
     container.innerHTML = "";
@@ -582,10 +599,9 @@
 
     const oyuncu = oyuncular.find(p => p.id == id);
     if (oyuncu) {
-      // Her tarayıcı/kullanıcı için benzersiz bir oy veren ID'si üretip kaydedelim ki herkes kendi oyunu güncelleyebilsin
       let voterId = localStorage.getItem("halisaha_voter_id");
       if (!voterId) {
-        voterId = 'user_' + Math.random().toString(36.substring(2));
+        voterId = 'user_' + Math.random().toString(36).substring(2);
         localStorage.setItem("halisaha_voter_id", voterId);
       }
 
@@ -661,7 +677,6 @@
       return guncel ? guncel : secilen;
     });
 
-    // Sıralamada güncel ortalama puanları baz alıyoruz
     const sirali = [...secilenOyuncular].sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
 
     const takimA = [];
