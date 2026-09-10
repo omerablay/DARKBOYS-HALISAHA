@@ -58,7 +58,6 @@
       display: block;
     }
     
-    /* Form Stilleri */
     .form-box {
       background: white;
       padding: 15px;
@@ -107,7 +106,6 @@
     .btn-danger { background: var(--danger); }
     .btn-block { width: 100%; padding: 14px; font-size: 1.1em; }
     
-    /* Yükleniyor Göstergesi */
     .loading-overlay {
       text-align: center;
       padding: 20px;
@@ -115,7 +113,6 @@
       color: var(--primary);
     }
 
-    /* Oyuncu Yönetim Tablosu */
     .player-table {
       width: 100%;
       border-collapse: collapse;
@@ -131,7 +128,6 @@
     }
     .player-table th { background: #e8f5e9; color: var(--primary-dark); }
     
-    /* Seçim Grid */
     .counter {
       text-align: center;
       font-weight: bold;
@@ -163,7 +159,6 @@
     }
     .player-card input { margin-right: 8px; }
     
-    /* Canlı Puanlama (Anket) Kartları */
     .poll-container {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -198,7 +193,6 @@
       font-weight: bold;
     }
 
-    /* Sonuçlar */
     .results { margin-top: 25px; display: none; }
     .teams-container { display: flex; gap: 15px; flex-wrap: wrap; }
     .team-box {
@@ -324,10 +318,11 @@
     document.getElementById(tabId).classList.add('active');
   }
 
-  // BULUTTAN VERİ ÇEKME
+  // BULUTTAN VERİ ÇEKME (CORS Engelini Aşmak İçin mode: cors / redirect takip)
   function verileriBuluttanCek() {
     document.getElementById("loadingStatus").style.display = "block";
-    fetch(API_URL)
+    
+    fetch(API_URL, { method: "GET", redirect: "follow" })
       .then(res => res.json())
       .then(data => {
         oyuncular = data || [];
@@ -339,7 +334,7 @@
       })
       .catch(err => {
         console.error("Veri çekilemedi:", err);
-        document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! İnternet bağlantınızı kontrol edin.";
+        document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! Apps Script dağıtımını (Anyone) kontrol edin.";
       });
   }
 
@@ -371,7 +366,6 @@
     return mevkiler;
   }
 
-  // OYUNCU YÖNETİM İŞLEMLERİ
   function oyuncuKaydet() {
     const editId = document.getElementById("editId").value;
     const name = document.getElementById("newName").value.trim();
@@ -481,7 +475,6 @@
     });
   }
 
-  // CANLI PUANLAMA (ANKET) İŞLEMLERİ
   function anketListesiniGuncelle() {
     const container = document.getElementById("pollContainer");
     container.innerHTML = "";
@@ -528,7 +521,6 @@
     }
   }
 
-  // KADRO KURMA İŞLEMLERİ
   function gridiGuncelle() {
     const grid = document.getElementById("playerGrid");
     grid.innerHTML = "";
