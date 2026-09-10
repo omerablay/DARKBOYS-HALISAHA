@@ -291,7 +291,7 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbw1aWIFHRr_0QY3KZ1U1EOQ-5oRD4JVkLwB-DxI2_QOL6S6cm1RWwRQSTn7z1LhUafm4w/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbwLXIfjT76Q_-aJydAT1cEjF0FuN1EFKOyN3kBZ2yeTVfaNTl5ShWBPcqBS3MVA317ZyA/exec";
   
   let oyuncular = [];
   let secilenOyuncular = [];
@@ -318,24 +318,29 @@
     document.getElementById(tabId).classList.add('active');
   }
 
-  // BULUTTAN VERİ ÇEKME (CORS Engelini Aşmak İçin mode: cors / redirect takip)
+  // JSONP ile CORS Engelini Tamamen Aşarak Veri Çekme
   function verileriBuluttanCek() {
     document.getElementById("loadingStatus").style.display = "block";
     
-    fetch(API_URL, { method: "GET", redirect: "follow" })
-      .then(res => res.json())
-      .then(data => {
-        oyuncular = data || [];
-        document.getElementById("loadingStatus").style.display = "none";
-        document.getElementById("kadroTab").classList.add("active");
-        oyuncuListesiniGuncelle();
-        gridiGuncelle();
-        anketListesiniGuncelle();
-      })
-      .catch(err => {
-        console.error("Veri çekilemedi:", err);
-        document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! Apps Script dağıtımını (Anyone) kontrol edin.";
-      });
+    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      
+      oyuncular = data || [];
+      document.getElementById("loadingStatus").style.display = "none";
+      document.getElementById("kadroTab").classList.add("active");
+      oyuncuListesiniGuncelle();
+      gridiGuncelle();
+      anketListesiniGuncelle();
+    };
+
+    const script = document.createElement('script');
+    script.src = `${API_URL}?callback=${callbackName}`;
+    script.onerror = function() {
+      document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! Apps Script URL'ini veya dağıtımı kontrol edin.";
+    };
+    document.body.appendChild(script);
   }
 
   // BULUTA VERİ GÖNDERME / KAYDETME
