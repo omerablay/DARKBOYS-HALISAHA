@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Halı Saha Kadro Yöneticisi</title>
-  <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2e7d32">
   <style>
     :root {
       --primary: #2e7d32;
@@ -60,7 +58,7 @@
       display: block;
     }
     
-    .form-box {
+    .form-box, .lock-box {
       background: white;
       padding: 15px;
       border-radius: 8px;
@@ -219,12 +217,22 @@
   <h1>⚽ Halı Saha Kadro Yöneticisi</h1>
   
   <div class="tabs">
-    <button class="tab-btn active" onclick="tabDegistir('kadroTab')">1. Kadro Kur</button>
-    <button class="tab-btn" onclick="tabDegistir('yonetimTab')">2. Oyuncu Listesi</button>
-    <button class="tab-btn" onclick="tabDegistir('anketTab')">3. Canlı Puanlama</button>
+    <button class="tab-btn active" onclick="tabDegistir('kadroTab')">1. Kadro Kur (Yönetici)</button>
+    <button class="tab-btn" onclick="tabDegistir('yonetimTab')">2. Oyuncu Listesi (Yönetici)</button>
+    <button class="tab-btn" onclick="tabDegistir('anketTab')">3. Canlı Puanlama (Oylama)</button>
   </div>
 
   <div id="loadingStatus" class="loading-overlay">Veriler buluttan yükleniyor, lütfen bekleyin...</div>
+
+  <!-- YÖNETİCİ ŞİFRE EKRANI -->
+  <div id="adminLockModal" class="lock-box" style="display:none; text-align:center; border-left: 5px solid var(--warning);">
+    <h3 style="color:var(--warning);">🔒 Yönetici Yetkisi Gerekli</h3>
+    <p style="font-size:0.9em; color:#555;">Bu sekmeye erişmek için lütfen yönetici şifresini girin:</p>
+    <div style="display:flex; justify-content:center; gap:10px; max-width:300px; margin:0 auto;">
+      <input type="password" id="adminPasswordInput" placeholder="Yönetici Şifresi" style="padding:10px; border:1px solid #ccc; border-radius:6px; flex:1;">
+      <button class="btn" onclick="sifreKontrolEt()">Giriş Yap</button>
+    </div>
+  </div>
 
   <!-- TAB 1: KADRO KURMA -->
   <div id="kadroTab" class="tab-content">
@@ -253,7 +261,7 @@
       <input type="hidden" id="editId" value="">
       <div class="form-inputs">
         <input type="text" id="newName" placeholder="Oyuncu Adı">
-        <input type="number" id="newScore" placeholder="Puan (10-100)" min="10" max="100">
+        <input type="number" id="newScore" placeholder="Başlangıç Puanı (10-100)" min="10" max="100">
       </div>
       
       <div style="font-size:0.85em; font-weight:bold; margin-bottom:5px; color:#555;">Oynayabildiği Mevkiler (Birden fazla seçilebilir):</div>
@@ -271,7 +279,7 @@
       <thead>
         <tr>
           <th>İsim</th>
-          <th>Mevcut Puan</th>
+          <th>Ortalama Puan</th>
           <th>Mevki(ler)</th>
           <th>İşlem</th>
         </tr>
@@ -280,12 +288,12 @@
     </table>
   </div>
 
-  <!-- TAB 3: CANLI PUANLAMA (ANKET) -->
+  <!-- TAB 3: CANLI PUANLAMA (ANKET & OYLAMA) -->
   <div id="anketTab" class="tab-content">
     <div class="form-box" style="background: #e8f5e9; border-left: 5px solid var(--primary);">
-      <h3 style="margin-top:0; color:var(--primary-dark);">📊 Canlı Performans & Anket Puanlama</h3>
+      <h3 style="margin-top:0; color:var(--primary-dark);">📊 Canlı Oylama & Puan Havuzu</h3>
       <p style="font-size: 0.9em; color: #555; margin-bottom: 0;">
-        Bu haftaki maç performansına göre oyuncuların puanlarını anlık olarak güncelleyebilirsiniz. Değişiklikler ortak tabloya kaydedilir ve kadro kurma algoritmasına yansır.
+        Buradan oyunculara puan verebilirsiniz. Verdiğiniz oy havuza eklenir ve sistem otomatik olarak tüm oyların <b>ortalama puanını</b> hesaplar.
       </p>
     </div>
     <div class="poll-container" id="pollContainer"></div>
@@ -293,20 +301,34 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbwLXIfjT76Q_-aJydAT1cEjF0FuN1EFKOyN3kBZ2yeTVfaNTl5ShWBPcqBS3MVA317ZyA/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbwji1v8ljFA7CO-IFBv_z9uod-NF2Tpq_KVBwaRfpcU0iyCKjAxLck0xtfLH4rThKPFlw/exec";
+  const ADMIN_PASS = "1453"; // BURADAN YÖNETİCİ ŞİFRENİZİ DEĞİŞTİREBİLİRSİNİZ
   
   let oyuncular = [];
   let secilenOyuncular = [];
   let sonKadrolar = null;
+  let aktifTab = 'kadroTab';
 
   document.addEventListener("DOMContentLoaded", () => {
     verileriBuluttanCek();
   });
 
   function tabDegistir(tabId) {
+    aktifTab = tabId;
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    
+    document.getElementById('adminLockModal').style.display = 'none';
+
+    // 1 ve 2. sekme yöneticiye özel
+    if (tabId === 'kadroTab' || tabId === 'yonetimTab') {
+      const yetkili = sessionStorage.getItem("admin_auth") === "true";
+      if (!yetkili) {
+        document.querySelectorAll('.tab-btn')[tabId === 'kadroTab' ? 0 : 1].classList.add('active');
+        document.getElementById('adminLockModal').style.display = 'block';
+        return;
+      }
+    }
+
     if(tabId === 'kadroTab') {
       document.querySelectorAll('.tab-btn')[0].classList.add('active');
       gridiGuncelle();
@@ -320,7 +342,17 @@
     document.getElementById(tabId).classList.add('active');
   }
 
-  // JSONP ile CORS Engelini Tamamen Aşarak Veri Çekme
+  function sifreKontrolEt() {
+    const girilen = document.getElementById("adminPasswordInput").value;
+    if (girilen === ADMIN_PASS) {
+      sessionStorage.setItem("admin_auth", "true");
+      document.getElementById("adminPasswordInput").value = "";
+      tabDegistir(aktifTab);
+    } else {
+      alert("Hatalı şifre!");
+    }
+  }
+
   function verileriBuluttanCek() {
     document.getElementById("loadingStatus").style.display = "block";
     
@@ -329,32 +361,58 @@
       delete window[callbackName];
       document.body.removeChild(script);
       
-      oyuncular = data || [];
+      // Verileri işle (Eğer puanlar string veya JSON havuzu halindeyse parse et)
+      oyuncular = (data || []).map(p => {
+        let oylar = {};
+        try {
+          oylar = typeof p.puan === 'string' && p.puan.startsWith('{') ? JSON.parse(p.puan) : { "Genel": Number(p.puan) || 50 };
+        } catch(e) {
+          oylar = { "Genel": Number(p.puan) || 50 };
+        }
+        return {
+          id: p.id,
+          isim: p.isim,
+          oylar: oylar,
+          mevkiler: p.mevkiler
+        };
+      });
+
       document.getElementById("loadingStatus").style.display = "none";
-      document.getElementById("kadroTab").classList.add("active");
-      oyuncuListesiniGuncelle();
-      gridiGuncelle();
-      anketListesiniGuncelle();
+      tabDegistir('kadroTab');
     };
 
     const script = document.createElement('script');
     script.src = `${API_URL}?callback=${callbackName}`;
     script.onerror = function() {
-      document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! Apps Script URL'ini veya dağıtımı kontrol edin.";
+      document.getElementById("loadingStatus").innerText = "Veriler yüklenirken hata oluştu! İnternet bağlantınızı kontrol edin.";
     };
     document.body.appendChild(script);
   }
 
-  // BULUTA VERİ GÖNDERME / KAYDETME
+  function ortalamaPuanHesapla(oylar) {
+    const degerler = Object.values(oylar);
+    if (degerler.length === 0) return 50;
+    const toplam = degerler.reduce((acc, val) => acc + Number(val), 0);
+    return Math.round(toplam / degerler.length);
+  }
+
   function verileriBulutaKaydet(callback) {
     document.getElementById("loadingStatus").innerText = "Buluta kaydediliyor...";
     document.getElementById("loadingStatus").style.display = "block";
+
+    // Kayıt yaparken oyları JSON formatına çevirip kaydediyoruz
+    const kayitVerisi = oyuncular.map(p => ({
+      id: p.id,
+      isim: p.isim,
+      puan: JSON.stringify(p.oylar),
+      mevkiler: p.mevkiler
+    }));
 
     fetch(API_URL, {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(oyuncular)
+      body: JSON.stringify(kayitVerisi)
     })
     .then(() => {
       document.getElementById("loadingStatus").style.display = "none";
@@ -382,7 +440,7 @@
     document.querySelectorAll('.role-cb:checked').forEach(cb => selectedRoles.push(cb.value));
 
     if (!name || isNaN(score)) {
-      alert("Lütfen geçerli bir isim ve puan girin!");
+      alert("Lütfen geçerli bir isim ve başlangıç puanı girin!");
       return;
     }
 
@@ -395,14 +453,16 @@
       const index = oyuncular.findIndex(p => p.id == editId);
       if (index > -1) {
         oyuncular[index].isim = name;
-        oyuncular[index].puan = score;
         oyuncular[index].mevkiler = selectedRoles;
+        // Eğer yeni puan eklendiyse havuza dahil et
+        if(!oyuncular[index].oylar) oyuncular[index].oylar = {};
+        oyuncular[index].oylar["Yönetici"] = score;
       }
     } else {
       const yeniOyuncu = {
         id: Date.now(),
         isim: name,
-        puan: score,
+        oylar: { "Yönetici": score },
         mevkiler: selectedRoles
       };
       oyuncular.push(yeniOyuncu);
@@ -413,7 +473,7 @@
       anketListesiniGuncelle();
       gridiGuncelle();
       formuTemizle();
-      alert("Değişiklikler buluta başarıyla kaydedildi!");
+      alert("Değişiklikler buluta kaydedildi!");
     });
   }
 
@@ -423,7 +483,7 @@
 
     document.getElementById("editId").value = oyuncu.id;
     document.getElementById("newName").value = oyuncu.isim;
-    document.getElementById("newScore").value = oyuncu.puan;
+    document.getElementById("newScore").value = ortalamaPuanHesapla(oyuncu.oylar);
 
     const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
     document.querySelectorAll('.role-cb').forEach(cb => {
@@ -432,7 +492,6 @@
 
     document.getElementById("saveBtn").innerText = "Oyuncuyu Güncelle";
     document.getElementById("saveBtn").style.backgroundColor = "var(--warning)";
-    tabDegistir('yonetimTab');
   }
 
   function oyuncuSil(id) {
@@ -468,10 +527,11 @@
     }
 
     oyuncular.forEach(p => {
+      const ortPuan = ortalamaPuanHesapla(p.oylar);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><b>${p.isim}</b></td>
-        <td>${p.puan}</td>
+        <td><b>${ortPuan}</b> <span style="font-size:0.75em; color:#777;">(Oylar: ${Object.keys(p.oylar).length})</span></td>
         <td>${mevkileriFormatla(p.mevkiler)}</td>
         <td>
           <button class="btn btn-edit" onclick="oyuncuDuzenle(${p.id})">Düzenle</button>
@@ -482,48 +542,59 @@
     });
   }
 
+  // CANLI OYLAMA VE PUAN HAVUZU
   function anketListesiniGuncelle() {
     const container = document.getElementById("pollContainer");
     container.innerHTML = "";
 
     if (oyuncular.length === 0) {
-      container.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777;">Önce oyuncu listesinden oyuncu eklemelisiniz.</p>`;
+      container.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777;">Henüz oyuncu bulunmuyor.</p>`;
       return;
     }
 
     oyuncular.forEach(p => {
+      const ortPuan = ortalamaPuanHesapla(p.oylar);
       const card = document.createElement("div");
       card.className = "poll-card";
       card.innerHTML = `
         <div>
           <div class="poll-header">
             <b>${p.isim}</b>
-            <span style="font-size:0.8em; color:#777;">${mevkileriFormatla(p.mevkiler)}</span>
+            <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">Ortalama: ${ortPuan}</span>
           </div>
+          <div style="font-size:0.75em; color:#777; margin-bottom:8px;">Mevki: ${mevkileriFormatla(p.mevkiler)} | Toplam Oy: ${Object.keys(p.oylar).length}</div>
         </div>
         <div class="poll-score-input">
-          <input type="number" id="poll-score-${p.id}" value="${p.puan}" min="10" max="100">
-          <button class="btn" style="padding: 8px 12px; font-size:0.9em;" onclick="canliPuanGuncelle(${p.id})">Güncelle</button>
+          <input type="number" id="poll-score-${p.id}" placeholder="Puanın" min="10" max="100">
+          <button class="btn" style="padding: 8px 12px; font-size:0.9em;" onclick="oyVer(${p.id})">Oy Ver</button>
         </div>
       `;
       container.appendChild(card);
     });
   }
 
-  function canliPuanGuncelle(id) {
+  function oyVer(id) {
     const inputVal = parseInt(document.getElementById(`poll-score-${id}`).value);
     if (isNaN(inputVal) || inputVal < 10 || inputVal > 100) {
       alert("Lütfen 10 ile 100 arasında geçerli bir puan girin!");
       return;
     }
 
-    const index = oyuncular.findIndex(p => p.id == id);
-    if (index > -1) {
-      oyuncular[index].puan = inputVal;
+    const oyuncu = oyuncular.find(p => p.id == id);
+    if (oyuncu) {
+      // Her tarayıcı/kullanıcı için benzersiz bir oy veren ID'si üretip kaydedelim ki herkes kendi oyunu güncelleyebilsin
+      let voterId = localStorage.getItem("halisaha_voter_id");
+      if (!voterId) {
+        voterId = 'user_' + Math.random().toString(36.substring(2));
+        localStorage.setItem("halisaha_voter_id", voterId);
+      }
+
+      if (!oyuncu.oylar) oyuncu.oylar = {};
+      oyuncu.oylar[voterId] = inputVal;
+
       verileriBulutaKaydet(() => {
-        oyuncuListesiniGuncelle();
-        gridiGuncelle();
-        alert(`${oyuncular[index].isim} oyuncusunun puanı güncellendi ve ortak tabloya işlendi!`);
+        anketListesiniGuncelle();
+        alert(`${oyuncu.isim} için puanınız havuza eklendi! Yeni ortalama: ${ortalamaPuanHesapla(oyuncu.oylar)}`);
       });
     }
   }
@@ -533,11 +604,12 @@
     grid.innerHTML = "";
 
     if (oyuncular.length === 0) {
-      grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777;">Lütfen önce 'Oyuncu Listesi' sekmesinden oyuncularınızı ekleyin.</p>`;
+      grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:#777;">Önce oyuncu eklemelisiniz.</p>`;
       return;
     }
 
     oyuncular.forEach(oyuncu => {
+      const ortPuan = ortalamaPuanHesapla(oyuncu.oylar);
       const isSelected = secilenOyuncular.some(p => p.id == oyuncu.id);
       const card = document.createElement("div");
       card.className = `player-card ${isSelected ? 'selected' : ''}`;
@@ -546,7 +618,7 @@
         <input type="checkbox" ${isSelected ? 'checked' : ''} pointer-events="none">
         <div>
           <div style="font-weight:600;">${oyuncu.isim}</div>
-          <div style="font-size:0.75em; color:#777;">Puan: ${oyuncu.puan} | ${mevkileriFormatla(oyuncu.mevkiler)}</div>
+          <div style="font-size:0.75em; color:#777;">Puan: ${ortPuan} | ${mevkileriFormatla(oyuncu.mevkiler)}</div>
         </div>
       `;
       grid.appendChild(card);
@@ -589,7 +661,8 @@
       return guncel ? guncel : secilen;
     });
 
-    const sirali = [...secilenOyuncular].sort((a, b) => b.puan - a.puan);
+    // Sıralamada güncel ortalama puanları baz alıyoruz
+    const sirali = [...secilenOyuncular].sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
 
     const takimA = [];
     const takimB = [];
@@ -597,19 +670,20 @@
     let puanB = 0;
 
     sirali.forEach((oyuncu) => {
+      const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
       if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
         takimA.push(oyuncu);
-        puanA += oyuncu.puan;
+        puanA += pNotu;
       } else {
         takimB.push(oyuncu);
-        puanB += oyuncu.puan;
+        puanB += pNotu;
       }
     });
 
     sonKadrolar = { takimA, takimB };
 
-    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${p.puan} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
-    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${p.puan} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
     document.getElementById("results").style.display = "block";
     document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
   }
