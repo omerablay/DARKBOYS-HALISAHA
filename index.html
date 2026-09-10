@@ -108,10 +108,13 @@
     
     .loading-overlay {
       text-align: center;
-      padding: 10px;
-      font-size: 0.85em;
+      padding: 12px;
+      font-size: 0.9em;
       font-weight: bold;
-      color: var(--warning);
+      color: var(--primary);
+      background: #e8f5e9;
+      border-radius: 6px;
+      margin-bottom: 15px;
       display: none;
     }
 
@@ -224,7 +227,7 @@
     <button class="tab-btn" onclick="tabDegistir('anketTab')">3. Canlı Puanlama (Oylama)</button>
   </div>
 
-  <div id="loadingStatus" class="loading-overlay">Buluttan güncel veriler alınıyor...</div>
+  <div id="loadingStatus" class="loading-overlay">Veriler buluttan yükleniyor...</div>
 
   <!-- YÖNETİCİ ŞİFRE EKRANI -->
   <div id="adminLockModal" class="lock-box" style="display:none; text-align:center; border-left: 5px solid var(--warning);">
@@ -312,16 +315,8 @@
   let aktifTab = 'kadroTab';
 
   document.addEventListener("DOMContentLoaded", () => {
-    // 1. Önce cihazda önbelleğe alınmış verileri anında yükle (Hız için)
-    const cachedData = localStorage.getItem("halisaha_cache_oyuncular");
-    if (cachedData) {
-      try {
-        oyuncular = JSON.parse(cachedData);
-        tabDegistir('kadroTab');
-      } catch(e) {}
-    }
-
-    // 2. Ardından buluttan güncel veriyi sessizce çek
+    // Eski önbelleği tamamen temizle
+    localStorage.removeItem("halisaha_cache_oyuncular");
     verileriBuluttanCek();
   });
 
@@ -365,57 +360,55 @@
   }
 
   function verileriBuluttanCek() {
-    document.getElementById("loadingStatus").style.display = "block";
-    
-    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      if (script.parentNode) document.body.removeChild(script);
-      
-      oyuncular = (data || []).map(p => {
-        let oylar = {};
-        try {
-          oylar = typeof p.puan === 'string' && p.puan.startsWith('{') ? JSON.parse(p.puan) : { "Genel": Number(p.puan) || 50 };
-        } catch(e) {
-          oylar = { "Genel": Number(p.puan) || 50 };
-        }
-        return {
-          id: p.id,
-          isim: p.isim,
-          oylar: oylar,
-          mevkiler: p.mevkiler
-        };
+    const loadStatus = document.getElementById("loadingStatus");
+    loadStatus.style.display = "block";
+
+    fetch(API_URL, { method: "GET", redirect: "follow" })
+      .then(res => res.json())
+      .then(data => {
+        oyuncular = (data || []).map(p => {
+          let oylar = {};
+          try {
+            if (typeof p.puan === 'string' && p.puan.startsWith('{')) {
+              oylar = JSON.parse(p.puan);
+            } else if (p.puan !== "" && p.puan !== null && !isNaN(Number(p.puan))) {
+              oylar = { "Yönetici": Number(p.puan) };
+            }
+          } catch(e) {
+            oylar = {};
+          }
+          return {
+            id: p.id,
+            isim: p.isim,
+            oylar: oylar,
+            mevkiler: p.mevkiler
+          };
+        });
+
+        localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
+        loadStatus.style.display = "none";
+
+        if (aktifTab === 'kadroTab') gridiGuncelle();
+        else if (aktifTab === 'yonetimTab') oyuncuListesiniGuncelle();
+        else if (aktifTab === 'anketTab') anketListesiniGuncelle();
+      })
+      .catch(err => {
+        console.error("Veri çekme hatası:", err);
+        loadStatus.style.display = "none";
       });
-
-      // Tarayıcı önbelleğine kaydet
-      localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
-
-      document.getElementById("loadingStatus").style.display = "none";
-      
-      // Ekranı güncel verilerle tazele
-      if (aktifTab === 'kadroTab') gridiGuncelle();
-      else if (aktifTab === 'yonetimTab') oyuncuListesiniGuncelle();
-      else if (aktifTab === 'anketTab') anketListesiniGuncelle();
-    };
-
-    const script = document.createElement('script');
-    script.src = `${API_URL}?callback=${callbackName}`;
-    script.onerror = function() {
-      document.getElementById("loadingStatus").style.display = "none";
-    };
-    document.body.appendChild(script);
   }
 
   function ortalamaPuanHesapla(oylar) {
     const degerler = Object.values(oylar);
-    if (degerler.length === 0) return 50;
+    if (degerler.length === 0) return 0; // Hiç oy yoksa 0 döner
     const toplam = degerler.reduce((acc, val) => acc + Number(val), 0);
     return Math.round(toplam / degerler.length);
   }
 
   function verileriBulutaKaydet(callback) {
-    document.getElementById("loadingStatus").innerText = "Buluta kaydediliyor...";
-    document.getElementById("loadingStatus").style.display = "block";
+    const loadStatus = document.getElementById("loadingStatus");
+    loadStatus.innerText = "Buluta kaydediliyor...";
+    loadStatus.style.display = "block";
 
     const kayitVerisi = oyuncular.map(p => ({
       id: p.id,
@@ -424,7 +417,6 @@
       mevkiler: p.mevkiler
     }));
 
-    // Yerel önbelleği de hemen güncelle
     localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
 
     fetch(API_URL, {
@@ -434,12 +426,12 @@
       body: JSON.stringify(kayitVerisi)
     })
     .then(() => {
-      document.getElementById("loadingStatus").style.display = "none";
+      loadStatus.style.display = "none";
       if (callback) callback();
     })
     .catch(err => {
       console.error("Kayıt hatası:", err);
-      document.getElementById("loadingStatus").style.display = "none";
+      loadStatus.style.display = "none";
       alert("Kayıt sırasında bir hata oluştu.");
     });
   }
@@ -501,7 +493,8 @@
 
     document.getElementById("editId").value = oyuncu.id;
     document.getElementById("newName").value = oyuncu.isim;
-    document.getElementById("newScore").value = ortalamaPuanHesapla(oyuncu.oylar);
+    const ort = ortalamaPuanHesapla(oyuncu.oylar);
+    document.getElementById("newScore").value = ort > 0 ? ort : "";
 
     const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
     document.querySelectorAll('.role-cb').forEach(cb => {
@@ -546,10 +539,11 @@
 
     oyuncular.forEach(p => {
       const ortPuan = ortalamaPuanHesapla(p.oylar);
+      const oySayisi = Object.keys(p.oylar).length;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><b>${p.isim}</b></td>
-        <td><b>${ortPuan}</b> <span style="font-size:0.75em; color:#777;">(Oylar: ${Object.keys(p.oylar).length})</span></td>
+        <td><b>${oySayisi > 0 ? ortPuan : 'Puan Girilmedi'}</b> <span style="font-size:0.75em; color:#777;">(Oy: ${oySayisi})</span></td>
         <td>${mevkileriFormatla(p.mevkiler)}</td>
         <td>
           <button class="btn btn-edit" onclick="oyuncuDuzenle(${p.id})">Düzenle</button>
@@ -570,6 +564,7 @@
     }
 
     oyuncular.forEach(p => {
+      const oySayisi = Object.keys(p.oylar).length;
       const ortPuan = ortalamaPuanHesapla(p.oylar);
       const card = document.createElement("div");
       card.className = "poll-card";
@@ -577,9 +572,9 @@
         <div>
           <div class="poll-header">
             <b>${p.isim}</b>
-            <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">Ortalama: ${ortPuan}</span>
+            <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">Ortalama: ${oySayisi > 0 ? ortPuan : 'Henüz oy yok'}</span>
           </div>
-          <div style="font-size:0.75em; color:#777; margin-bottom:8px;">Mevki: ${mevkileriFormatla(p.mevkiler)} | Toplam Oy: ${Object.keys(p.oylar).length}</div>
+          <div style="font-size:0.75em; color:#777; margin-bottom:8px;">Mevki: ${mevkileriFormatla(p.mevkiler)} | Toplam Oy: ${oySayisi}</div>
         </div>
         <div class="poll-score-input">
           <input type="number" id="poll-score-${p.id}" placeholder="Puanın" min="10" max="100">
@@ -625,6 +620,7 @@
     }
 
     oyuncular.forEach(oyuncu => {
+      const oySayisi = Object.keys(oyuncu.oylar).length;
       const ortPuan = ortalamaPuanHesapla(oyuncu.oylar);
       const isSelected = secilenOyuncular.some(p => p.id == oyuncu.id);
       const card = document.createElement("div");
@@ -634,7 +630,7 @@
         <input type="checkbox" ${isSelected ? 'checked' : ''} pointer-events="none">
         <div>
           <div style="font-weight:600;">${oyuncu.isim}</div>
-          <div style="font-size:0.75em; color:#777;">Puan: ${ortPuan} | ${mevkileriFormatla(oyuncu.mevkiler)}</div>
+          <div style="font-size:0.75em; color:#777;">Puan: ${oySayisi > 0 ? ortPuan : 'Puan Yok'} | ${mevkileriFormatla(oyuncu.mevkiler)}</div>
         </div>
       `;
       grid.appendChild(card);
@@ -707,10 +703,10 @@
     if (!sonKadrolar) return;
 
     let metin = `⚽ *BU HAFTANIN KADROLARI* ⚽\n\n`;
-    metin += `🔴 *A TAKIMI (Siyah)*\n`;
+    metin += `🔴 *KARAOĞLANLAR TAKIMI (Siyah)*\n`;
     sonKadrolar.takimA.forEach((p, i) => metin += `${i + 1}. ${p.isim}\n`);
 
-    metin += `\n🔵 *B TAKIMI (Beyaz)*\n`;
+    metin += `\n🔵 * KARAGÖZÜN TORUNLARI TAKIMI (Beyaz)*\n`;
     sonKadrolar.takimB.forEach((p, i) => metin += `${i + 1}. ${p.isim}\n`);
 
     metin += `\n📍 Herkese başarılar!`;
