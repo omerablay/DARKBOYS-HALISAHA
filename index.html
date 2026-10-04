@@ -339,22 +339,22 @@
         </div>
       </div>
 
-      <!-- SAHA GÖRSELİ ALANI -->
+    <!-- SAHA GÖRSELİ ALANI -->
       <h3 style="text-align:center; margin-top:25px; color:var(--primary);">Saha Diziliş Görseli</h3>
       <div class="field-container">
         <div class="soccer-field" id="fieldTeamA">
           <div class="field-title">🔴 A Takımı Dizilişi</div>
-          <div class="field-row" id="fieldARowH"></div>
-          <div class="field-row" id="fieldARowO"></div>
-          <div class="field-row" id="fieldARowD"></div>
           <div class="field-row" id="fieldARowK"></div>
+          <div class="field-row" id="fieldARowD"></div>
+          <div class="field-row" id="fieldARowO"></div>
+          <div class="field-row" id="fieldARowH"></div>
         </div>
         <div class="soccer-field" id="fieldTeamB">
           <div class="field-title">🔵 B Takımı Dizilişi</div>
-          <div class="field-row" id="fieldBRowH"></div>
-          <div class="field-row" id="fieldBRowO"></div>
-          <div class="field-row" id="fieldBRowD"></div>
           <div class="field-row" id="fieldBRowK"></div>
+          <div class="field-row" id="fieldBRowD"></div>
+          <div class="field-row" id="fieldBRowO"></div>
+          <div class="field-row" id="fieldBRowH"></div>
         </div>
       </div>
 
@@ -872,28 +872,27 @@
   }
 
 function sahaDoldur(takim, prefix) {
-  const hSatir = [];
-  const oSatir = [];
-  const dSatir = [];
-  const kSatir = [];
+    const hSatir = [];
+    const oSatir = [];
+    const dSatir = [];
+    const kSatir = [];
 
-  takim.forEach(p => {
-    const mList = Array.isArray(p.mevkiler) ? p.mevkiler : (typeof p.mevkiler === "string" ? p.mevkiler.split("/") : []);
-    const html = `<div class="field-player">${p.isim}<span>${ortalamaPuanHesapla(p.oylar)}p</span></div>`;
-    
-    if (mList.includes("H")) hSatir.push(html);
-    else if (mList.includes("O")) oSatir.push(html);
-    else if (mList.includes("D")) dSatir.push(html);
-    else if (mList.includes("K")) kSatir.push(html);
-    else oSatir.push(html);
-  });
+    takim.forEach(p => {
+      const mList = Array.isArray(p.mevkiler) ? p.mevkiler : (typeof p.mevkiler === "string" ? p.mevkiler.split("/") : []);
+      const html = `<div class="field-player">${p.isim}<span>${ortalamaPuanHesapla(p.oylar)}p</span></div>`;
+      
+      if (mList.includes("H")) hSatir.push(html);
+      else if (mList.includes("O")) oSatir.push(html);
+      else if (mList.includes("D")) dSatir.push(html);
+      else if (mList.includes("K")) kSatir.push(html);
+      else oSatir.push(html);
+    });
 
-  // Kalecilerin en altta (kalede) görünmesi için satır sırasını ters çeviriyoruz
-  document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
-  document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
-  document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
-  document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
-}
+    document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
+    document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
+    document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
+    document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
+  }
   function whatsappKopyala() {
     if (!sonKadrolar) return;
 
