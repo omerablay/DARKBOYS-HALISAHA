@@ -678,20 +678,53 @@
     btn.disabled = secilenOyuncular.length !== 16;
   }
 
-  function kadroOlustur() {
+ function kadroOlustur() {
     secilenOyuncular = secilenOyuncular.map(secilen => {
       const guncel = oyuncular.find(p => p.id == secilen.id);
       return guncel ? guncel : secilen;
     });
 
-    const sirali = [...secilenOyuncular].sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
+    // 1. Kalecileri ve diğer oyuncuları ayır
+    // (Mevkiler dizisinde veya stringinde 'K' geçiyorsa kalecidir)
+    const kaleciler = [];
+    const digerleri = [];
+
+    secilenOyuncular.forEach(oyuncu => {
+      const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
+      if (mList.includes("K")) {
+        kaleciler.push(oyuncu);
+      } else {
+        digerleri.push(oyuncu);
+      }
+    });
+
+    // Kalecileri puana göre büyükten küçüğe sırala
+    kaleciler.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
+    // Diğer oyuncuları puana göre büyükten küçüğe sırala
+    digerleri.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
 
     const takimA = [];
     const takimB = [];
     let puanA = 0;
     let puanB = 0;
 
-    sirali.forEach((oyuncu) => {
+    // 2. Önce kalecileri adil bir şekilde dağıt (Zikzak mantığı: A, B, A, B...)
+    kaleciler.forEach((kaleci, index) => {
+      const pNotu = ortalamaPuanHesapla(kaleci.oylar);
+      if (index % 2 === 0 && takimA.length < 8) {
+        takimA.push(kaleci);
+        puanA += pNotu;
+      } else if (takimB.length < 8) {
+        takimB.push(kaleci);
+        puanB += pNotu;
+      } else {
+        takimA.push(kaleci);
+        puanA += pNotu;
+      }
+    });
+
+    // 3. Kalan oyuncuları toplam puan dengesini gözeterek takımlara yerleştir
+    digerleri.forEach((oyuncu) => {
       const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
       if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
         takimA.push(oyuncu);
