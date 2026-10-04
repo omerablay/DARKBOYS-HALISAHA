@@ -798,67 +798,77 @@
     }
   }
 
-  function kadroOlustur() {
-    secilenOyuncular = secilenOyuncular.map(secilen => {
-      const guncel = oyuncular.find(p => p.id == secilen.id);
-      return guncel ? guncel : secilen;
-    });
+ function kadroOlustur() {
+    try {
+      secilenOyuncular = secilenOyuncular.map(secilen => {
+        const guncel = oyuncular.find(p => p.id == secilen.id);
+        return guncel ? guncel : secilen;
+      });
 
-    const kaleciler = [];
-    const digerleri = [];
+      // 1. Kalecileri ve diğer oyuncuları ayır
+      const kaleciler = [];
+      const digerleri = [];
 
-    secilenOyuncular.forEach(oyuncu => {
-      const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
-      if (mList.includes("K")) {
-        kaleciler.push(oyuncu);
-      } else {
-        digerleri.push(oyuncu);
-      }
-    });
+      secilenOyuncular.forEach(oyuncu => {
+        const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
+        if (mList.includes("K")) {
+          kaleciler.push(oyuncu);
+        } else {
+          digerleri.push(oyuncu);
+        }
+      });
 
-    kaleciler.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
-    digerleri.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
+      kaleciler.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
+      digerleri.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
 
-    const takimA = [];
-    const takimB = [];
-    let puanA = 0;
-    let puanB = 0;
+      const takimA = [];
+      const takimB = [];
+      let puanA = 0;
+      let puanB = 0;
 
-    kaleciler.forEach((kaleci, index) => {
-      const pNotu = ortalamaPuanHesapla(kaleci.oylar);
-      if (index % 2 === 0 && takimA.length < 8) {
-        takimA.push(kaleci);
-        puanA += pNotu;
-      } else if (takimB.length < 8) {
-        takimB.push(kaleci);
-        puanB += pNotu;
-      } else {
-        takimA.push(kaleci);
-        puanA += pNotu;
-      }
-    });
+      // 2. Kalecileri adil bir şekilde dağıt
+      kaleciler.forEach((kaleci, index) => {
+        const pNotu = ortalamaPuanHesapla(kaleci.oylar);
+        if (index % 2 === 0 && takimA.length < 8) {
+          takimA.push(kaleci);
+          puanA += pNotu;
+        } else if (takimB.length < 8) {
+          takimB.push(kaleci);
+          puanB += pNotu;
+        } else {
+          takimA.push(kaleci);
+          puanA += pNotu;
+        }
+      });
 
-    digerleri.forEach((oyuncu) => {
-      const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
-      if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
-        takimA.push(oyuncu);
-        puanA += pNotu;
-      } else {
-        takimB.push(oyuncu);
-        puanB += pNotu;
-      }
-    });
+      // 3. Kalan oyuncuları dengeli dağıt
+      digerleri.forEach((oyuncu) => {
+        const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
+        if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
+          takimA.push(oyuncu);
+          puanA += pNotu;
+        } else {
+          takimB.push(oyuncu);
+          puanB += pNotu;
+        }
+      });
 
-    sonKadrolar = { takimA, takimB };
+      sonKadrolar = { takimA, takimB };
 
-    document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
-    document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
-    
-    sahaDoldur(takimA, "TeamA");
-    sahaDoldur(takimB, "TeamB");
+      document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+      document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+      
+      sahaDoldur(takimA, "TeamA");
+      sahaDoldur(takimB, "TeamB");
 
-    document.getElementById("results").style.display = "block";
-    document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.style.display = "block";
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+
+    } catch (err) {
+      console.error("Kadro oluşturma hatası:", err);
+      alert("Kadro oluşturulurken bir hata oluştu: " + err.message);
+    }
   }
 
   function sahaDoldur(takim, prefix) {
