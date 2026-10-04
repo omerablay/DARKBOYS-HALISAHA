@@ -871,29 +871,29 @@
     }
   }
 
-  function sahaDoldur(takim, prefix) {
-    const hSatir = [];
-    const oSatir = [];
-    const dSatir = [];
-    const kSatir = [];
+function sahaDoldur(takim, prefix) {
+  const hSatir = [];
+  const oSatir = [];
+  const dSatir = [];
+  const kSatir = [];
 
-    takim.forEach(p => {
-      const mList = Array.isArray(p.mevkiler) ? p.mevkiler : (typeof p.mevkiler === "string" ? p.mevkiler.split("/") : []);
-      const html = `<div class="field-player">${p.isim}<span>${ortalamaPuanHesapla(p.oylar)}p</span></div>`;
-      
-      if (mList.includes("H")) hSatir.push(html);
-      else if (mList.includes("O")) oSatir.push(html);
-      else if (mList.includes("D")) dSatir.push(html);
-      else if (mList.includes("K")) kSatir.push(html);
-      else oSatir.push(html);
-    });
+  takim.forEach(p => {
+    const mList = Array.isArray(p.mevkiler) ? p.mevkiler : (typeof p.mevkiler === "string" ? p.mevkiler.split("/") : []);
+    const html = `<div class="field-player">${p.isim}<span>${ortalamaPuanHesapla(p.oylar)}p</span></div>`;
+    
+    if (mList.includes("H")) hSatir.push(html);
+    else if (mList.includes("O")) oSatir.push(html);
+    else if (mList.includes("D")) dSatir.push(html);
+    else if (mList.includes("K")) kSatir.push(html);
+    else oSatir.push(html);
+  });
 
-    document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
-    document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
-    document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
-    document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
-  }
-
+  // Kalecilerin en altta (kalede) görünmesi için satır sırasını ters çeviriyoruz
+  document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
+  document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
+  document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
+  document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
+}
   function whatsappKopyala() {
     if (!sonKadrolar) return;
 
