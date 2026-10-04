@@ -473,7 +473,6 @@
     fetch(API_URL, { method: "GET", redirect: "follow" })
       .then(res => res.json())
       .then(data => {
-        // Benzersiz id'lere göre gruplayarak boş ve mükerrer isimleri kesin olarak filtrele
         const map = new Map();
         (data || []).forEach(p => {
           if (!p.id || !p.isim || String(p.isim).trim() === "") return;
@@ -521,7 +520,6 @@
     loadStatus.innerText = "Buluta kaydediliyor...";
     loadStatus.style.display = "block";
 
-    // Boş veya mükerrer kayıtları eleyerek temiz veri hazırla
     const temizMap = new Map();
     oyuncular.forEach(p => {
       if (!p.id || !p.isim || String(p.isim).trim() === "") return;
@@ -787,7 +785,17 @@
     const counter = document.getElementById("counter");
     const btn = document.getElementById("generateBtn");
     counter.innerText = `Seçilen Oyuncu: ${secilenOyuncular.length} / 16`;
-    btn.disabled = secilenOyuncular.length !== 16;
+    
+    // 16 oyuncu seçildiğinde butonun aktifleşmesini sağlayan güncellenmiş mantık
+    if (secilenOyuncular.length === 16) {
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+      btn.style.cursor = "not-allowed";
+    }
   }
 
   function kadroOlustur() {
@@ -796,7 +804,6 @@
       return guncel ? guncel : secilen;
     });
 
-    // 1. Kalecileri ve diğer oyuncuları ayır
     const kaleciler = [];
     const digerleri = [];
 
@@ -817,7 +824,6 @@
     let puanA = 0;
     let puanB = 0;
 
-    // 2. Kalecileri adil bir şekilde dağıt
     kaleciler.forEach((kaleci, index) => {
       const pNotu = ortalamaPuanHesapla(kaleci.oylar);
       if (index % 2 === 0 && takimA.length < 8) {
@@ -832,7 +838,6 @@
       }
     });
 
-    // 3. Kalan oyuncuları dengeli dağıt
     digerleri.forEach((oyuncu) => {
       const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
       if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
@@ -849,7 +854,6 @@
     document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
     document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
     
-    // Saha görselini doldurma
     sahaDoldur(takimA, "TeamA");
     sahaDoldur(takimB, "TeamB");
 
