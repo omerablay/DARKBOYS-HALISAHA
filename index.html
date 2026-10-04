@@ -858,8 +858,8 @@
       document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
       document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
       
-      sahaDoldur(takimA, "TeamA");
-      sahaDoldur(takimB, "TeamB");
+      sahaDoldur(takimA, "A");
+      sahaDoldur(takimB, "B");
 
       const resultsDiv = document.getElementById("results");
       resultsDiv.style.display = "block";
