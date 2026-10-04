@@ -214,6 +214,88 @@
     .team-list { list-style: none; padding: 0; margin: 0; }
     .team-list li { padding: 6px 0; border-bottom: 1px solid #f9f9f9; }
     .whatsapp-btn { background-color: #25D366; margin-top: 15px; }
+
+    /* SAHA GÖRSELİ STİLLERİ */
+    .field-container {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .soccer-field {
+      flex: 1;
+      min-width: 280px;
+      background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+      border: 3px solid #ffffff;
+      border-radius: 12px;
+      padding: 15px;
+      position: relative;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .soccer-field::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: rgba(255,255,255,0.4);
+      transform: translateY(-50%);
+    }
+    .soccer-field::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60px;
+      height: 60px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .field-title {
+      color: white;
+      font-weight: bold;
+      text-align: center;
+      background: rgba(0,0,0,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      z-index: 2;
+    }
+    .field-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      z-index: 2;
+      flex-wrap: wrap;
+    }
+    .field-player {
+      background: white;
+      color: #333;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.75em;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .field-player span {
+      display: block;
+      font-size: 0.65em;
+      color: #666;
+      font-weight: normal;
+    }
   </style>
 </head>
 <body>
@@ -256,6 +338,26 @@
           <ul class="team-list" id="teamBList"></ul>
         </div>
       </div>
+
+      <!-- SAHA GÖRSELİ ALANI -->
+      <h3 style="text-align:center; margin-top:25px; color:var(--primary);">Saha Diziliş Görseli</h3>
+      <div class="field-container">
+        <div class="soccer-field" id="fieldTeamA">
+          <div class="field-title">🔴 A Takımı Dizilişi</div>
+          <div class="field-row" id="fieldARowH"></div>
+          <div class="field-row" id="fieldARowO"></div>
+          <div class="field-row" id="fieldARowD"></div>
+          <div class="field-row" id="fieldARowK"></div>
+        </div>
+        <div class="soccer-field" id="fieldTeamB">
+          <div class="field-title">🔵 B Takımı Dizilişi</div>
+          <div class="field-row" id="fieldBRowH"></div>
+          <div class="field-row" id="fieldBRowO"></div>
+          <div class="field-row" id="fieldBRowD"></div>
+          <div class="field-row" id="fieldBRowK"></div>
+        </div>
+      </div>
+
       <button class="btn btn-block whatsapp-btn" onclick="whatsappKopyala()">WhatsApp Metnini Kopyala</button>
     </div>
   </div>
@@ -371,7 +473,10 @@
     fetch(API_URL, { method: "GET", redirect: "follow" })
       .then(res => res.json())
       .then(data => {
-        oyuncular = (data || []).map(p => {
+        // Benzersiz id'lere göre gruplayarak boş ve mükerrer isimleri kesin olarak filtrele
+        const map = new Map();
+        (data || []).forEach(p => {
+          if (!p.id || !p.isim || String(p.isim).trim() === "") return;
           let oylar = {};
           try {
             if (typeof p.puan === 'string' && p.puan.startsWith('{')) {
@@ -382,14 +487,15 @@
           } catch(e) {
             oylar = {};
           }
-          return {
+          map.set(String(p.id), {
             id: p.id,
-            isim: p.isim,
+            isim: String(p.isim).trim(),
             oylar: oylar,
             mevkiler: p.mevkiler
-          };
+          });
         });
 
+        oyuncular = Array.from(map.values());
         localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
         loadStatus.style.display = "none";
 
@@ -415,13 +521,19 @@
     loadStatus.innerText = "Buluta kaydediliyor...";
     loadStatus.style.display = "block";
 
-    const kayitVerisi = oyuncular.map(p => ({
-      id: p.id,
-      isim: p.isim,
-      puan: JSON.stringify(p.oylar),
-      mevkiler: p.mevkiler
-    }));
+    // Boş veya mükerrer kayıtları eleyerek temiz veri hazırla
+    const temizMap = new Map();
+    oyuncular.forEach(p => {
+      if (!p.id || !p.isim || String(p.isim).trim() === "") return;
+      temizMap.set(String(p.id), {
+        id: p.id,
+        isim: String(p.isim).trim(),
+        puan: JSON.stringify(p.oylar),
+        mevkiler: p.mevkiler
+      });
+    });
 
+    const kayitVerisi = Array.from(temizMap.values());
     localStorage.setItem("halisaha_cache_oyuncular", JSON.stringify(oyuncular));
 
     fetch(API_URL, {
@@ -678,14 +790,13 @@
     btn.disabled = secilenOyuncular.length !== 16;
   }
 
- function kadroOlustur() {
+  function kadroOlustur() {
     secilenOyuncular = secilenOyuncular.map(secilen => {
       const guncel = oyuncular.find(p => p.id == secilen.id);
       return guncel ? guncel : secilen;
     });
 
     // 1. Kalecileri ve diğer oyuncuları ayır
-    // (Mevkiler dizisinde veya stringinde 'K' geçiyorsa kalecidir)
     const kaleciler = [];
     const digerleri = [];
 
@@ -698,9 +809,7 @@
       }
     });
 
-    // Kalecileri puana göre büyükten küçüğe sırala
     kaleciler.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
-    // Diğer oyuncuları puana göre büyükten küçüğe sırala
     digerleri.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
 
     const takimA = [];
@@ -708,7 +817,7 @@
     let puanA = 0;
     let puanB = 0;
 
-    // 2. Önce kalecileri adil bir şekilde dağıt (Zikzak mantığı: A, B, A, B...)
+    // 2. Kalecileri adil bir şekilde dağıt
     kaleciler.forEach((kaleci, index) => {
       const pNotu = ortalamaPuanHesapla(kaleci.oylar);
       if (index % 2 === 0 && takimA.length < 8) {
@@ -723,7 +832,7 @@
       }
     });
 
-    // 3. Kalan oyuncuları toplam puan dengesini gözeterek takımlara yerleştir
+    // 3. Kalan oyuncuları dengeli dağıt
     digerleri.forEach((oyuncu) => {
       const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
       if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
@@ -739,8 +848,36 @@
 
     document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
     document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
+    
+    // Saha görselini doldurma
+    sahaDoldur(takimA, "TeamA");
+    sahaDoldur(takimB, "TeamB");
+
     document.getElementById("results").style.display = "block";
     document.getElementById("results").scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function sahaDoldur(takim, prefix) {
+    const hSatir = [];
+    const oSatir = [];
+    const dSatir = [];
+    const kSatir = [];
+
+    takim.forEach(p => {
+      const mList = Array.isArray(p.mevkiler) ? p.mevkiler : (typeof p.mevkiler === "string" ? p.mevkiler.split("/") : []);
+      const html = `<div class="field-player">${p.isim}<span>${ortalamaPuanHesapla(p.oylar)}p</span></div>`;
+      
+      if (mList.includes("H")) hSatir.push(html);
+      else if (mList.includes("O")) oSatir.push(html);
+      else if (mList.includes("D")) dSatir.push(html);
+      else if (mList.includes("K")) kSatir.push(html);
+      else oSatir.push(html);
+    });
+
+    document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
+    document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
+    document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
+    document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
   }
 
   function whatsappKopyala() {
