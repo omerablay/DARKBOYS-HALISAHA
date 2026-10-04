@@ -339,22 +339,22 @@
         </div>
       </div>
 
-    <!-- SAHA GÖRSELİ ALANI -->
+   <!-- SAHA GÖRSELİ ALANI -->
       <h3 style="text-align:center; margin-top:25px; color:var(--primary);">Saha Diziliş Görseli</h3>
       <div class="field-container">
         <div class="soccer-field" id="fieldTeamA">
           <div class="field-title">🔴 A Takımı Dizilişi</div>
-          <div class="field-row" id="fieldARowK"></div>
-          <div class="field-row" id="fieldARowD"></div>
-          <div class="field-row" id="fieldARowO"></div>
           <div class="field-row" id="fieldARowH"></div>
+          <div class="field-row" id="fieldARowO"></div>
+          <div class="field-row" id="fieldARowD"></div>
+          <div class="field-row" id="fieldARowK"></div>
         </div>
         <div class="soccer-field" id="fieldTeamB">
           <div class="field-title">🔵 B Takımı Dizilişi</div>
-          <div class="field-row" id="fieldBRowK"></div>
-          <div class="field-row" id="fieldBRowD"></div>
-          <div class="field-row" id="fieldBRowO"></div>
           <div class="field-row" id="fieldBRowH"></div>
+          <div class="field-row" id="fieldBRowO"></div>
+          <div class="field-row" id="fieldBRowD"></div>
+          <div class="field-row" id="fieldBRowK"></div>
         </div>
       </div>
 
@@ -888,10 +888,10 @@ function sahaDoldur(takim, prefix) {
       else oSatir.push(html);
     });
 
-    document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
-    document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
-    document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
     document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
+    document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
+    document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
+    document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
   }
   function whatsappKopyala() {
     if (!sonKadrolar) return;
