@@ -798,7 +798,7 @@
     }
   }
 
- function kadroOlustur() {
+function kadroOlustur() {
     try {
       secilenOyuncular = secilenOyuncular.map(secilen => {
         const guncel = oyuncular.find(p => p.id == secilen.id);
@@ -811,15 +811,27 @@
 
       secilenOyuncular.forEach(oyuncu => {
         const mList = Array.isArray(oyuncu.mevkiler) ? oyuncu.mevkiler : (typeof oyuncu.mevkiler === "string" ? oyuncu.mevkiler.split("/") : []);
-        if (mList.includes("K")) {
+        // Mevki kontrolünü daha güvenli hale getirelim (büyük/küçük harf duyarsız veya tam eşleşme)
+        if (mList.includes("K") || mList.includes("k")) {
           kaleciler.push(oyuncu);
         } else {
           digerleri.push(oyuncu);
         }
       });
 
-      kaleciler.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
-      digerleri.sort((a, b) => ortalamaPuanHesapla(b.oylar) - ortalamaPuanHesapla(a.oylar));
+      // KISMI RASTGELELİK (ŞANS FAKTÖRÜ):
+      // Puanları hesaplarken ufak bir oynama (±2 puan) ekleyerek benzer güçteki 
+      // oyuncuların her seferinde farklı sırada yer almasını ve farklı takımlara düşmesini sağlıyoruz.
+      function puanHesaplaRastgele(oyuncu) {
+        const basePuan = ortalamaPuanHesapla(oyuncu.oylar);
+        // Çok küçük bir rastgelelik kat (örneğin -2 ile +2 arası)
+        const rastgeleJitter = Math.floor(Math.random() * 5) - 2; 
+        return basePuan + rastgeleJitter;
+      }
+
+      // Oyuncuları rastgeleleştirilmiş puanlarına göre sırala (ama gerçek ortalamalarını sakla)
+      kaleciler.sort((a, b) => puanHesaplaRastgele(b) - puanHesaplaRastgele(a));
+      digerleri.sort((a, b) => puanHesaplaRastgele(b) - puanHesaplaRastgele(a));
 
       const takimA = [];
       const takimB = [];
@@ -841,7 +853,7 @@
         }
       });
 
-      // 3. Kalan oyuncuları dengeli dağıt
+      // 3. Kalan oyuncuları dengeli ve kısmi rastgele dağıt
       digerleri.forEach((oyuncu) => {
         const pNotu = ortalamaPuanHesapla(oyuncu.oylar);
         if ((puanA <= puanB && takimA.length < 8) || takimB.length === 8) {
@@ -858,8 +870,8 @@
       document.getElementById("teamAList").innerHTML = takimA.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
       document.getElementById("teamBList").innerHTML = takimB.map(p => `<li><b>${p.isim}</b> (Puan: ${ortalamaPuanHesapla(p.oylar)} | ${mevkileriFormatla(p.mevkiler)})</li>`).join("");
       
-      sahaDoldur(takimA, "A");
-      sahaDoldur(takimB, "B");
+      sahaDoldur(takimA, "TeamA");
+      sahaDoldur(takimB, "TeamB");
 
       const resultsDiv = document.getElementById("results");
       resultsDiv.style.display = "block";
