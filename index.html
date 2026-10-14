@@ -893,17 +893,23 @@ function sahaDoldur(takim, prefix) {
       const mList = Array.isArray(p.mevkiler) ? p.mevkiler : (typeof p.mevkiler === "string" ? p.mevkiler.split("/") : []);
       const html = `<div class="field-player">${p.isim}<span>${ortalamaPuanHesapla(p.oylar)}p</span></div>`;
       
-      if (mList.includes("H")) hSatir.push(html);
-      else if (mList.includes("O")) oSatir.push(html);
-      else if (mList.includes("D")) dSatir.push(html);
-      else if (mList.includes("K")) kSatir.push(html);
+      if (mList.includes("H") || mList.includes("h")) hSatir.push(html);
+      else if (mList.includes("O") || mList.includes("o")) oSatir.push(html);
+      else if (mList.includes("D") || mList.includes("d")) dSatir.push(html);
+      else if (mList.includes("K") || mList.includes("k")) kSatir.push(html);
       else oSatir.push(html);
     });
 
-    document.getElementById(`field${prefix}RowH`).innerHTML = hSatir.join("");
-    document.getElementById(`field${prefix}RowO`).innerHTML = oSatir.join("");
-    document.getElementById(`field${prefix}RowD`).innerHTML = dSatir.join("");
-    document.getElementById(`field${prefix}RowK`).innerHTML = kSatir.join("");
+    // Güvenli element güncellemesi (Hata patlamasını önler)
+    const elH = document.getElementById(`field${prefix}RowH`);
+    const elO = document.getElementById(`field${prefix}RowO`);
+    const elD = document.getElementById(`field${prefix}RowD`);
+    const elK = document.getElementById(`field${prefix}RowK`);
+
+    if (elH) elH.innerHTML = hSatir.join("");
+    if (elO) elO.innerHTML = oSatir.join("");
+    if (elD) elD.innerHTML = dSatir.join("");
+    if (elK) elK.innerHTML = kSatir.join("");
   }
   function whatsappKopyala() {
     if (!sonKadrolar) return;
